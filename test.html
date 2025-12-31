@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style> 
+        body { margin: 0; overflow: hidden; background: #1a1a1a; color: white; font-family: sans-serif; } 
+        #info { position: absolute; top: 15px; left: 15px; pointer-events: none; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; border: 1px solid #444; }
+        .stat-val { color: #52ff52; font-weight: bold; }
+        .alert { color: #ff5252; font-weight: bold; animation: blink 0.5s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body>
+<div id="info">
+    <h3 style="color:#ff5252; margin-top:0;">세대: <span id="gen">1</span></h3>
+    <p>남은 도망자: <span id="alive" class="stat-val">0</span></p>
+    <p>술래 상태: <span id="cState">추격 중</span></p>
+</div>
+<script>
+let chaser;
+let runners = [];
+let obstacles = [];
+let barricades = [];
+let foods = [];
+let generation = 1;
+let runnerCount = 12;
+let deadRunners = [];
+let deathLocations = [];
+
+function setup() {
+    createCanvas(windowWidth, windowHeight);
+    initObstacles();
+    initGame();
+}
+
+function initObstacles() {
+    obstacles = [];
+    for (let i = 0; i < 5; i++) {
+        obstacles.push({ x: random(width*0.1, width*0.8), y: random(height*0.1, height*0.8), w: random(130, 200), h: random(130, 200) });
+    }
+}
+
+function initGame() {
+    chaser = new Chaser(width/2, height/2);
+    barricades = [];
+    foods = [];
+    deathLocations = []; 
+    for (let i = 0; i < 15; i++) spawnFood(true);
+    
+    if (deadRunners.length === 0) {
+        for (let i = 0; i < runnerCount; i++) runners.push(new Runner(random(width), random(height)));
+    } else {
+        deadRunners.sort((a, b) => b.score - a.score);
+        let newRunners = [];
+        for(let i=0; i<3; i++) newRunners.push(new Runner(random(width), random(height), deadRunners[i].dna));
+        while(newRunners.length < runnerCount) {
+            let parent = deadRunners[floor(random(deadRunners.length * 0.4))];
+            newRunners.push(new Runner(random(width), random(height), mutate(parent.dna)));
+        }
+        runners = newRunners;
+        deadRunners = [];
+    }
+}
+
+function mutate(dna) {
+    return {
+        maxSpeed: constrain(dna.maxSpeed + random(-0.3, 0.3), 3, 6.5),
+        viewDist: constrain(dna.viewDist + random(-30, 30), 180, 450),
+        foodDist: constrain(dna.foodDist + random(-30, 30), 150, 500),
+        barricadeProb: constrain(dna.barricadeProb + random(-0.02, 0.02), 0.01, 0.2)
+    };
+}
+
+function spawnFood(isInitial = false) {
+    let bestPos = null;
+    let maxScore = -1;
+    for (let i = 0; i < 20; i++) {
+        let x = random(width);
+        let y = random(height);
+        let inWall = false;
+        for (let obs of obstacles) {
+            if (x > obs.x - 20 && x < obs.x + obs.w + 20 && y > obs.y - 20 && y < obs.y + obs.h + 20) { inWall = true; break; }
+        }
+        if (inWall) continue;
+        let score = isInitial ? 0 : p5.Vector.dist(createVector(x, y), chaser.pos);
+        if (score > maxScore) { maxScore = score; bestPos = createVector(x, y); }
+    }
+    if (bestPos) foods.push(bestPos);
+}
+
+function draw() {
+    background(25);
+    updateUI();
+    if (frameCount % 80 === 0 && foods.length < 25) spawnFood();
+
+    let allWalls = [...obstacles, ...barricades];
+
+    // 그리기
+    fill(55); noStroke();
+    for (let obs of obstacles) rect(obs.x, obs.y, obs.w, obs.h);
+    fill(139, 69, 19); stroke(100, 50, 10);
+    for (let bar of barricades) rect(bar.x, bar.y, bar.w, bar.h);
+    fill(255, 215, 0); noStroke();
+    for (let f of foods) ellipse(f.x, f.y, 7, 7);
+
+    // 술래 업데이트
+    if (runners.length > 0) {
+        let target = chaser.selectTarget(runners);
+        chaser.chase(target, allWalls);
+        chaser.update(allWalls);
+        chaser.display();
+    } else {
+        generation++;
+        initGame();
+    }
+
+    // 도망자 업데이트
+    for (let i = runners.length - 1; i >= 0; i--) {
+        let r = runners[i];
+        r.flock(runners);
+        r.searchFood(foods);
+        r.reactToChaser(chaser);
+        r.hide(chaser, allWalls);
+        r.avoid(allWalls);
+        r.update(allWalls);
+        r.display();
+
+        if (p5.Vector.dist(chaser.pos, r.pos) < 22) {
+            deathLocations.push(r.pos.copy());
+            chaser.level++;
+            r.score = frameCount;
+            deadRunners.push(r);
+            runners.splice(i, 1);
+        } else if (r.energy <= 0) {
+            deadRunners.push(r);
+            runners.splice(i, 1);
+        }
+    }
+}
+
+function updateUI() {
+    document.getElementById('gen').innerText = generation;
+    document.getElementById('alive').innerText = runners.length;
+    document.getElementById('cState').innerText = chaser.stuckFrames > 30 ? "경로 재탐색 중!" : "추격 중";
+    document.getElementById('cState').className = chaser.stuckFrames > 30 ? "alert" : "";
+}
+
+// 공통 물리 충돌 로직
+function resolveCollision(agent, walls, isChaser = false) {
+    for (let w of walls) {
+        let cx = constrain(agent.pos.x, w.x, w.x + w.w);
+        let cy = constrain(agent.pos.y, w.y, w.y + w.h);
+        let d = dist(agent.pos.x, agent.pos.y, cx, cy);
+        
+        if (d < agent.radius) {
+            let overlap = agent.radius - d;
+            let push = createVector(agent.pos.x - cx, agent.pos.y - cy);
+            if (push.mag() === 0) push = p5.Vector.random2D();
+            push.setMag(overlap);
+            agent.pos.add(push);
+            
+            // 미끄러짐 구현: 벽 방향의 속도 성분만 제거
+            let normal = push.copy().normalize();
+            let dot = agent.vel.dot(normal);
+            if (dot < 0) {
+                let vNormal = p5.Vector.mult(normal, dot);
+                agent.vel.sub(vNormal); // 수직 속도 제거하여 벽을 타고 흐르게 함
+            }
+        }
+    }
+}
+
+class Chaser {
+    constructor(x, y) {
+        this.pos = createVector(x, y);
+        this.vel = createVector(0, 0);
+        this.acc = createVector(0, 0);
+        this.radius = 15;
+        this.level = 1;
+        this.maxSpeed = 4.3;
+        this.stuckFrames = 0;
+    }
+
+    selectTarget(list) {
+        let minD = Infinity; let target = list[0];
+        for (let r of list) {
+            let d = p5.Vector.dist(this.pos, r.pos);
+            if (d < minD) { minD = d; target = r; }
+        }
+        return target;
+    }
+
+    chase(t, walls) {
+        let currentMaxSpeed = this.maxSpeed + (this.level * 0.05);
+        let desired = p5.Vector.sub(t.pos, this.pos).setMag(currentMaxSpeed);
+
+        // 레이더 센서: 정면, 좌45도, 우45도 검사
+        let sensorAngles = [0, QUARTER_PI, -QUARTER_PI];
+        let blocked = false;
+        let avoidForce = createVector(0, 0);
+
+        for (let angle of sensorAngles) {
+            let look = this.vel.copy().rotate(angle).setMag(60);
+            let sensorPos = p5.Vector.add(this.pos, look);
+            for (let w of walls) {
+                if (sensorPos.x > w.x && sensorPos.x < w.x + w.w && sensorPos.y > w.y && sensorPos.y < w.y + w.h) {
+                    blocked = true;
+                    // 막힌 반대 방향으로 회전하는 힘 추가
+                    let escape = look.copy().rotate(angle === 0 ? HALF_PI : -angle).setMag(currentMaxSpeed);
+                    avoidForce.add(escape);
+                }
+            }
+        }
+
+        if (this.vel.mag() < 0.8) this.stuckFrames++;
+        else this.stuckFrames = 0;
+
+        if (this.stuckFrames > 40) {
+            // 강제 탈출: 90도 옆으로 대시
+            let escape = createVector(-this.vel.y, this.vel.x).setMag(currentMaxSpeed * 2);
+            this.acc.add(escape);
+            if (this.stuckFrames > 60) this.stuckFrames = 0;
+        } else if (blocked) {
+            this.acc.add(p5.Vector.sub(avoidForce, this.vel).limit(1.0));
+        } else {
+            this.acc.add(p5.Vector.sub(desired, this.vel).limit(0.5));
+        }
+    }
+
+    update(walls) {
+        this.vel.add(this.acc);
+        this.vel.limit(7);
+        this.pos.add(this.vel);
+        this.acc.mult(0);
+        resolveCollision(this, walls, true);
+    }
+
+    display() {
+        fill(255, 50, 50); stroke(255); strokeWeight(2);
+        ellipse(this.pos.x, this.pos.y, this.radius * 2, this.radius * 2);
+        // 술래 시선 방향 표시
+        line(this.pos.x, this.pos.y, this.pos.x + this.vel.x*5, this.pos.y + this.vel.y*5);
+    }
+}
+
+class Runner {
+    constructor(x, y, dna) {
+        this.pos = createVector(x, y);
+        this.vel = p5.Vector.random2D();
+        this.acc = createVector(0, 0);
+        this.radius = 11;
+        this.dna = dna ? dna : { maxSpeed: random(3.5, 5.5), viewDist: random(200, 350), foodDist: random(250, 450), barricadeProb: 0.05 };
+        this.energy = 100;
+        this.boredom = 0;
+    }
+
+    searchFood(foods) {
+        if (this.energy > 90 && this.boredom < 100) return;
+        let minD = Infinity; let bestF = null;
+        for (let f of foods) {
+            let d = p5.Vector.dist(this.pos, f);
+            if (d < minD && d < this.dna.foodDist) { minD = d; bestF = f; }
+        }
+        if (bestF) {
+            this.acc.add(p5.Vector.sub(bestF, this.pos).setMag(this.dna.maxSpeed).sub(this.vel).limit(0.3));
+            if (minD < 15) { foods.splice(foods.indexOf(bestF), 1); this.energy = min(this.energy + 45, 150); this.boredom = 0; }
+        }
+    }
+
+    reactToChaser(c) {
+        let d = p5.Vector.dist(this.pos, c.pos);
+        if (d < this.dna.viewDist) {
+            this.acc.add(p5.Vector.sub(this.pos, c.pos).setMag(this.dna.maxSpeed).sub(this.vel).limit(0.6));
+            if (d < 110 && random(1) < this.dna.barricadeProb && this.energy > 30) {
+                barricades.push({ x: this.pos.x - 20, y: this.pos.y - 20, w: 40, h: 40 });
+                this.energy -= 25;
+            }
+        }
+    }
+
+    hide(c, walls) {
+        if (this.boredom > 150) return;
+        for (let w of walls) {
+            let center = createVector(w.x + w.w/2, w.y + w.h/2);
+            let hPos = p5.Vector.add(center, p5.Vector.sub(center, c.pos).setMag(w.w/2 + 50));
+            if (p5.Vector.dist(this.pos, hPos) < 120) this.acc.add(p5.Vector.sub(hPos, this.pos).limit(0.4));
+        }
+    }
+
+    avoid(walls) {
+        let sensor = p5.Vector.add(this.pos, this.vel.copy().setMag(40));
+        for (let w of walls) {
+            if (sensor.x > w.x && sensor.x < w.x+w.w && sensor.y > w.y && sensor.y < w.y+w.h) {
+                this.acc.add(createVector(-this.vel.y, this.vel.x).setMag(this.dna.maxSpeed).sub(this.vel).limit(0.6));
+            }
+        }
+    }
+
+    flock(others) {
+        let sep = createVector(0,0); let count = 0;
+        for (let o of others) {
+            let d = p5.Vector.dist(this.pos, o.pos);
+            if (d > 0 && d < 50) { sep.add(p5.Vector.sub(this.pos, o.pos).normalize().div(d)); count++; }
+        }
+        if (count > 0) this.acc.add(sep.setMag(this.dna.maxSpeed).limit(0.4));
+    }
+
+    update(walls) {
+        this.energy -= 0.05;
+        this.boredom = this.vel.mag() < 1.0 ? this.boredom + 1 : max(0, this.boredom - 0.5);
+        this.vel.add(this.acc);
+        this.vel.limit(this.dna.maxSpeed);
+        this.pos.add(this.vel);
+        this.acc.mult(0);
+        resolveCollision(this, walls);
+        this.pos.x = (this.pos.x + width) % width;
+        this.pos.y = (this.pos.y + height) % height;
+    }
+
+    display() {
+        push(); translate(this.pos.x, this.pos.y); rotate(this.vel.heading());
+        fill(this.boredom > 150 ? color(100, 200, 255) : color(80, 255, 80)); noStroke();
+        triangle(-10, -7, -10, 7, 13, 0);
+        fill(255, 215, 0); rect(-12, 12, map(this.energy, 0, 150, 0, 24), 3);
+        pop();
+    }
+}
+</script>
+</body>
+</html>
