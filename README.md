@@ -1,7 +1,7 @@
 # AI-playing-tag
 자바스크립트로 만든 AI 술래잡기입니다 
 
-Tech Stack
+
 JavaScript:술래와 도망자의 인공지능(AI), 물리 연산, 게임 루프 등 핵심 로직을 담당합니다.
 HTML5 Canvas:2D 그래픽 출력을 위한 도화지 역할을 합니다
 CSS3:UI 디자인과 애니메이션 을 담당합니다.
