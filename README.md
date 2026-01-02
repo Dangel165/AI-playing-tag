@@ -1,4 +1,4 @@
-# AI Tag 
+# AI-playing-tag
 # AI 술래잡기
 
 ---
