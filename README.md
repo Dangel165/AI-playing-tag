@@ -1,68 +1,56 @@
 # AI-playing-tag
-# AI 술래잡기
+# AI 술래잡기 
 
 ---
 
 ## Motivation / 개발 이유
-* English: This project was inspired by Unity-based AI Tag simulation videos. I wanted to see if I could recreate complex intelligent behaviors and evolutionary logic using pure JavaScript and HTML5 Canvas in a web environment.
-* 한국어: 유튜브에서 유니티(Unity)로 제작된 AI 술래잡기 영상을 보고, 자바스크립트만으로도 저런 복잡한 지능형 로직과 진화 시스템을 간단하게 구현해볼 수 있지 않을까 하는 궁금증에서 시작되었습니다.
+* English: This project was inspired by Unity-based AI Tag simulation videos. I wanted to see if I could recreate it using pure JavaScript.
+* 한국어: 유니티 AI 술래잡기 동영상을 보다가 한번 간단하게 만들어보고 싶어서 만들었습니다.
 
 ---
 
 ## Tech Stack / 기술 스택
-* Language: JavaScript (ES6+) - Handles core AI logic, physics, and game loop.
-* Graphics: HTML5 Canvas API - 2D graphic rendering.
-* Design: CSS3 - UI design and animations.
-* Environment: Web Browser - Runs instantly on Chrome, Edge, etc., without installation.
+* Language: JavaScript (ES6+)
+* Graphics: HTML5 Canvas API
+* Design: CSS3
+* Environment: Web Browser
 
 ---
 
 ## Main Algorithms / 주요 알고리즘
-
-### 1. Steering Behaviors (조향 행동)
-* Seek: Target-oriented acceleration. / 목표를 향해 가속.
-* Flee: Moving away from threats. / 술래로부터 도망.
-* Avoidance: Detecting and bypassing obstacles using sensors. / 장애물을 감지하고 회피함.
-
-### 2. Genetic Algorithm (유전 알고리즘)
-* DNA Inheritance: Top 5 longest-surviving individuals pass their stats to the next generation.
-* Mutation: New generations evolve with slight variations in speed and vision based on their parents' DNA.
-* 진화 로직: 우수한 개체의 DNA를 복제하고 변이를 통해 더 최적화된 다음 세대를 생성함.
-
-### 3. Ray-casting (레이캐스팅)
-* Intelligent sensor technology using invisible lasers to detect walls in advance.
-* 보이지 않는 레이저를 쏴서 전방의 장애물을 미리 감지하는 지능형 센서 기술.
+* Steering Behaviors: Seek(추격), Flee(도망), Avoidance(장애물 회피)
+* Genetic Algorithm: 상위 5마리 DNA 복제 및 변이 진화
+* Ray-casting: 장애물 감지 센서 기술
+* Flocking: 도망자 간 분산(Separation) 로직
 
 ---
 
 ## Chaser Logic (술래 조건) - 2025.12.31 Update
-
-* Targeting: Automatically tracks the nearest living evader. / 살아있는 도망자 중 가장 가까운 개체를 추격.
-* Experience System (XP): Levels up per catch; permanent speed increase of 0.05 per level.
-* Fatigue: Speed decreases over time during chase; resets to 0 upon catching a target.
-* Deadlock Prevention: Recalculates path if stuck in obstacles for over 40 frames.
+* Targeting: 가장 가까운 도망자 추격
+* XP System: 포획 시 레벨업 및 속도 +0.05 상승
+* Fatigue: 추격 시 속도 저하, 포획 시 초기화
+* Deadlock Prevention: 40프레임 이상 끼일 경우 경로 재탐색
 * Special States:
-    * Respawn: Respawns as a powerful Lv.10 unit if the chaser count drops below 4.
-    * Berserk: Activated when only 1 evader remains. Speed increases to 7.5 and destroys barricades.
-    * Weakness: Speed drops to 25% of normal when entering the central Mud Zone.
+    * Respawn: 술래 사망 후 인원 4명 미만 시 Lv.10으로 부활
+    * Berserk: 최후의 1인 생존 시 속도 7.5 상승 및 바리케이드 파괴
+    * Weakness: 중앙 Mud Zone 진입 시 속도 25%로 감소
 
 ---
 
 ## Evader Logic (도망자 조건)
-
-* Energy: Consumed over time; the unit dies if energy reaches 0. / 에너지가 없으면 굶어 죽음.
-* Dash: 1.8x speed boost when the chaser is within 80px. / 술래 접근 시 에너지를 소모해 가속.
-* Flocking: Moving with allies provides a psychological speed boost up to 2.5. / 동료와 모여 있을 때 속도 상승.
+* Energy: 초당 일정량 소모, 0이 되면 사망
+* Dash: 술래 근처(80px) 시 에너지를 소모해 속도 1.8배 상승
+* Flocking: 동료와 모여 있을 때 속도 최대 2.5 추가 상승
 * Cooperation:
-    * Chaser Hunting: If 3+ evaders gather near the chaser (80px), they can eliminate the chaser.
-    * Revival: Revives 1 dead ally for every 12 food items collected by the group.
+    * 술래 사냥: 3마리 이상 근처(80px) 시 술래 제거 가능
+    * 동료 부활: 전체 먹은 음식 12개당 죽은 동료 1명 부활
 * Defense:
-    * Barricade: Deploys walls when the chaser is nearby (Prohibited in Mud Zone).
-    * Hide: Tends to hide behind obstacles to avoid the chaser's line of sight.
+    * Barricade: 술래 근처 시 설치 (Mud Zone 내부 설치 금지)
+    * Hide: 장애물 뒤로 은신 시도
 
 ---
 
 ## How to Run / 실행 방법
-1. Clone the repository / 저장소 클론:
+1. Clone the repository:
    ```bash
    git clone [https://github.com/Dangel165/AI-playing-tag.git](https://github.com/Dangel165/AI-playing-tag.git)
