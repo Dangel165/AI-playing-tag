@@ -1,123 +1,68 @@
-# AI Tag Simulator: Genetic Evolution & Strategy
-
-자바스크립트 기반의 **지능형 AI 술래잡기 시뮬레이션**입니다. 
-Steering Behaviors, 유전 알고리즘, 그리고 고도화된 상태 머신(FSM)을 결합하여, 시간이 지날수록 진화하는 도망자와 강력해지는 술래의 생존 사투를 시각화합니다.
-
-## 핵심 기술 및 엔진 (Core Tech)
-* **Language:** JavaScript (ES6+) - 핵심 로직, AI, 물리 연산 담당
-* **Graphics:** HTML5 Canvas API - 2D 그래픽 렌더링
-* **Design:** CSS3 - UI 디자인 및 부드러운 애니메이션
-* **Environment:** Web Browser (Chrome, Edge 등) 별도 설치 없이 즉시 실행
+# AI Tag Simulator: Genetic Evolution and Strategy
+# AI 술래잡기 시뮬레이터: 유전 진화 및 전략
 
 ---
 
-## 주요 알고리즘 (Key Algorithms)
-
-### 1. Steering Behaviors (조향 행동)
-* **Seek (추격):** 목표를 향해 최단 거리로 가속합니다.
-* **Flee (도망):** 위협(술래)으로부터 반대 방향으로 회피합니다.
-* **Obstacle Avoidance:** 장애물을 감지하고 충돌 전 경로를 수정합니다.
-
-### 2. Genetic Algorithm (유전 및 진화)
-* **DNA 상속:** 모든 도망자 전멸 시, 가장 오래 생존한 상위 5개체의 DNA를 복제합니다.
-* **Mutation (변이):** 다음 세대는 부모의 능력치를 기반으로 속도, 시야 등에 미세한 변이를 일으켜 더 영리한 개체로 진화합니다.
-
-### 3. Ray-casting (레이캐스팅)
-* 술래와 도망자의 지능형 센서 기술입니다. 보이지 않는 레이저를 쏴서 전방의 벽과 장애물을 미리 감지합니다.
+## Motivation / 개발 이유
+* English: This project was inspired by Unity-based AI Tag simulation videos. The goal was to recreate complex intelligent behaviors and evolutionary logic using pure JavaScript and HTML5 Canvas in a web environment.
+* 한국어: 유튜브에서 유니티(Unity)로 제작된 AI 술래잡기 영상을 보고, 자바스크립트만으로도 복잡한 지능형 로직과 진화 시스템을 구현해볼 수 있지 않을까 하는 궁금증에서 시작되었습니다.
 
 ---
 
-## 술래(Chaser) 로직 - 2025.12.31 Update
-
-* **지능형 타겟팅:** 살아있는 도망자 중 가장 가까운 개체를 우선적으로 추격합니다.
-* **성장 시스템 (XP):** 도망자를 1마리 잡을 때마다 **Level Up**, 레벨당 속도가 **0.05**씩 영구 상승합니다.
-* **피로도 (Fatigue):** 추격이 길어질수록 서서히 느려지며, 포획 성공 시 피로도가 초기화됩니다.
-* **데드락 방지:** 장애물에 끼일 경우(40프레임 이상) 경로를 재탐색하여 탈출합니다.
-* **특수 상태:**
-    * **리스폰:** 술래가 죽어 인원이 4명 미만이 되면, **Lv.10**의 강력한 상태로 부활합니다.
-    * **광폭화 (Berserk):** 최후의 1인 생존 시 발동. 속도가 **7.5**로 대폭 상승하며 바리케이드를 파괴합니다.
-    * **Mud Zone:** 중앙 진흙 지대 진입 시 속도가 평소의 **25%**로 급감합니다.
-
----
-
-## 도망자(Evader) 로직
-
-* **에너지 시스템:** 초당 에너지가 소모되며, 0이 되면 아사(Hunger Death)합니다.
-* **대시 (Dash):** 술래가 80px 내로 접근하면 에너지를 소모해 속도를 **1.8배** 높여 탈출합니다.
-* **군집(Flocking) 효과:** 동료들과 모여 있으면 심리적 안정감을 느껴 속도가 최대 **2.5** 추가 상승합니다.
-* **역공 및 협력:**
-    * **술래 제거:** 도망자 3마리 이상이 술래 근처(80px)에 모이면 술래를 역으로 사냥할 수 있습니다.
-    * **동료 부활:** 전체 수집한 음식이 12개가 될 때마다 죽은 동료 1명을 부활시킵니다.
-* **방어 기제:**
-    * **바리케이드:** 술래 근처에서 갈색 벽을 설치합니다. (단, Mud Zone 내 설치 금지)
-    * **은신 (Hide):** 장애물 뒤로 숨어 술래의 시야를 피합니다.
-
----
-
-## 실행 방법
-1. 저장소를 클론하거나 다운로드합니다.
-   ```bash
-   git clone [https://github.com/Dangel165/AI-playing-tag.git](https://github.com/Dangel165/AI-playing-tag.git)
-
-
-# AI Tag Simulator: Genetic Evolution & Strategy
-
-A JavaScript-based intelligent simulation of a tag game. It combines Steering Behaviors, Genetic Algorithms, and advanced Finite State Machines (FSM) to visualize the survival battle between evolving evaders and a strengthening chaser.
-
----
-
-## Tech Stack
-* Language: JavaScript (ES6+) - Handles core logic, AI, and physics calculations.
+## Tech Stack / 기술 스택
+* Language: JavaScript (ES6+) - Handles core AI logic, physics, and game loop.
 * Graphics: HTML5 Canvas API - 2D graphic rendering.
-* Design: CSS3 - UI design and smooth animations.
+* Design: CSS3 - UI design and animations.
 * Environment: Web Browser - Runs instantly on Chrome, Edge, etc., without installation.
 
 ---
 
-## Main Algorithms
+## Main Algorithms / 주요 알고리즘
 
-### 1. Steering Behaviors
-* Seek: Accelerates toward the target using the shortest path.
-* Flee: Evades threats (Chaser) by moving in the opposite direction.
-* Obstacle Avoidance: Detects obstacles and modifies the path before collision using sensor data.
+### 1. Steering Behaviors (조향 행동)
+* Seek: Target-oriented acceleration. / 목표를 향해 가속.
+* Flee: Moving away from threats. / 술래로부터 도망.
+* Avoidance: Detecting and bypassing obstacles using sensors. / 장애물을 감지하고 회피함.
 
-### 2. Genetic Algorithm (Evolution)
-* DNA Inheritance: When all evaders are eliminated, the DNA of the top 5 longest-surviving individuals is cloned.
-* Mutation: The next generation is born with slight variations in stats (speed, vision range) based on their parents' DNA to optimize survival.
+### 2. Genetic Algorithm (유전 알고리즘)
+* DNA Inheritance: Top 5 longest-surviving individuals pass their stats to the next generation.
+* Mutation: New generations evolve with slight variations in speed and vision.
+* 진화 로직: 우수한 개체의 DNA를 복제하고 변이를 통해 더 강한 다음 세대를 생성함.
 
-### 3. Ray-casting
-* An intelligent sensor technology used by both the chaser and evaders. It emits invisible lasers to detect walls and obstacles in advance.
+### 3. Ray-casting (레이캐스팅)
+* Intelligent sensor technology using invisible lasers to detect walls in advance.
+* 보이지 않는 레이저를 쏴서 전방의 장애물을 미리 감지하는 지능형 센서 기술.
 
 ---
 
-## Chaser Logic - 2025.12.31 Update
+## Chaser Logic (술래 조건) - 2025.12.31 Update
 
-* Intelligent Targeting: Prioritizes the nearest living evader as the target.
-* Experience System (XP): Levels up for every evader caught. Each level grants a permanent speed increase of 0.05.
-* Fatigue: Speed gradually decreases as the chase lasts longer. Fatigue resets to 0 upon catching an evader.
-* Deadlock Prevention: If stuck in obstacles for more than 40 frames, it recalculates the path to escape.
+* Targeting: Automatically tracks the nearest living evader. / 가장 가까운 도망자를 타겟으로 선정.
+* Experience System (XP): Levels up per catch; permanent speed increase of 0.05 per level.
+* Fatigue: Speed decreases over time during chase; resets to 0 upon catching a target.
+* Deadlock Prevention: Recalculates path if stuck in obstacles for over 40 frames.
 * Special States:
-    * Respawn: If the chaser dies and the count drops below 4, it respawns in a powerful Lv.10 state.
-    * Berserk: Activated when only one evader remains. Speed increases significantly to 7.5, and the chaser can destroy barricades.
-    * Weakness: Speed drops to 25% of the normal rate when entering the central Mud Zone.
+    * Respawn: Respawns as a powerful Lv.10 unit if the chaser count drops below 4.
+    * Berserk: Activated when only 1 evader remains. Speed increases to 7.5 and destroys barricades.
+    * Weakness: Speed drops to 25% of normal when entering the central Mud Zone.
 
 ---
 
-## Evader Logic
+## Evader Logic (도망자 조건)
 
-* Energy System: Consumes energy every second. The evader dies of hunger if energy reaches 0.
-* Dash: When the chaser is within 80px, the evader uses energy to increase speed by 1.8x.
-* Flocking Effect: Moving in groups provides a psychological boost, increasing speed by up to 2.5.
-* Cooperation & Counterattack:
-    * Chaser Hunting: If 3 or more evaders gather near the chaser (within 80px), they can eliminate the chaser.
-    * Revival: For every 12 food items collected by the group, one dead teammate is revived.
-* Defense Mechanisms:
-    * Barricade: Deploys brown walls when the chaser is nearby (Installation is prohibited inside the Mud Zone).
+* Energy: Consumed over time; the unit dies if energy reaches 0. / 에너지가 없으면 사망.
+* Dash: 1.8x speed boost when the chaser is within 80px. / 술래 접근 시 에너지 소모 후 가속.
+* Flocking: Moving with allies provides a psychological speed boost up to 2.5.
+* Cooperation:
+    * Chaser Hunting: If 3+ evaders gather near the chaser (80px), they can eliminate the chaser.
+    * Revival: Revives 1 dead ally for every 12 food items collected by the group.
+* Defense:
+    * Barricade: Deploys walls when the chaser is nearby (Prohibited in Mud Zone).
     * Hide: Tends to hide behind obstacles to avoid the chaser's line of sight.
 
 ---
 
-## How to Run
-1. Clone or download the repository.
+## How to Run / 실행 방법
+1. Clone the repository / 저장소 클론:
    ```bash
    git clone [https://github.com/Dangel165/AI-playing-tag.git](https://github.com/Dangel165/AI-playing-tag.git)
