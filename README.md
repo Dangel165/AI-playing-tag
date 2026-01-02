@@ -1,9 +1,9 @@
-# 🏃‍♂️ AI Tag Simulator: Genetic Evolution & Strategy
+# AI Tag Simulator: Genetic Evolution & Strategy
 
 자바스크립트 기반의 **지능형 AI 술래잡기 시뮬레이션**입니다. 
 Steering Behaviors, 유전 알고리즘, 그리고 고도화된 상태 머신(FSM)을 결합하여, 시간이 지날수록 진화하는 도망자와 강력해지는 술래의 생존 사투를 시각화합니다.
 
-## 🌟 핵심 기술 및 엔진 (Core Tech)
+## 핵심 기술 및 엔진 (Core Tech)
 * **Language:** JavaScript (ES6+) - 핵심 로직, AI, 물리 연산 담당
 * **Graphics:** HTML5 Canvas API - 2D 그래픽 렌더링
 * **Design:** CSS3 - UI 디자인 및 부드러운 애니메이션
@@ -11,7 +11,7 @@ Steering Behaviors, 유전 알고리즘, 그리고 고도화된 상태 머신(FS
 
 ---
 
-## 🧬 주요 알고리즘 (Key Algorithms)
+## 주요 알고리즘 (Key Algorithms)
 
 ### 1. Steering Behaviors (조향 행동)
 * **Seek (추격):** 목표를 향해 최단 거리로 가속합니다.
@@ -27,7 +27,7 @@ Steering Behaviors, 유전 알고리즘, 그리고 고도화된 상태 머신(FS
 
 ---
 
-## 👹 술래(Chaser) 로직 - 2025.12.31 Update
+## 술래(Chaser) 로직 - 2025.12.31 Update
 
 * **지능형 타겟팅:** 살아있는 도망자 중 가장 가까운 개체를 우선적으로 추격합니다.
 * **성장 시스템 (XP):** 도망자를 1마리 잡을 때마다 **Level Up**, 레벨당 속도가 **0.05**씩 영구 상승합니다.
@@ -40,7 +40,7 @@ Steering Behaviors, 유전 알고리즘, 그리고 고도화된 상태 머신(FS
 
 ---
 
-## 🏃‍♂️ 도망자(Evader) 로직
+## 도망자(Evader) 로직
 
 * **에너지 시스템:** 초당 에너지가 소모되며, 0이 되면 아사(Hunger Death)합니다.
 * **대시 (Dash):** 술래가 80px 내로 접근하면 에너지를 소모해 속도를 **1.8배** 높여 탈출합니다.
@@ -54,7 +54,7 @@ Steering Behaviors, 유전 알고리즘, 그리고 고도화된 상태 머신(FS
 
 ---
 
-## 🛠 실행 방법
+## 실행 방법
 1. 저장소를 클론하거나 다운로드합니다.
    ```bash
    git clone [https://github.com/Dangel165/AI-playing-tag.git](https://github.com/Dangel165/AI-playing-tag.git)
