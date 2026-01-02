@@ -58,3 +58,66 @@ Steering Behaviors, 유전 알고리즘, 그리고 고도화된 상태 머신(FS
 1. 저장소를 클론하거나 다운로드합니다.
    ```bash
    git clone [https://github.com/Dangel165/AI-playing-tag.git](https://github.com/Dangel165/AI-playing-tag.git)
+
+
+# AI Tag Simulator: Genetic Evolution & Strategy
+
+A JavaScript-based intelligent simulation of a tag game. It combines Steering Behaviors, Genetic Algorithms, and advanced Finite State Machines (FSM) to visualize the survival battle between evolving evaders and a strengthening chaser.
+
+---
+
+## Tech Stack
+* Language: JavaScript (ES6+) - Handles core logic, AI, and physics calculations.
+* Graphics: HTML5 Canvas API - 2D graphic rendering.
+* Design: CSS3 - UI design and smooth animations.
+* Environment: Web Browser - Runs instantly on Chrome, Edge, etc., without installation.
+
+---
+
+## Main Algorithms
+
+### 1. Steering Behaviors
+* Seek: Accelerates toward the target using the shortest path.
+* Flee: Evades threats (Chaser) by moving in the opposite direction.
+* Obstacle Avoidance: Detects obstacles and modifies the path before collision using sensor data.
+
+### 2. Genetic Algorithm (Evolution)
+* DNA Inheritance: When all evaders are eliminated, the DNA of the top 5 longest-surviving individuals is cloned.
+* Mutation: The next generation is born with slight variations in stats (speed, vision range) based on their parents' DNA to optimize survival.
+
+### 3. Ray-casting
+* An intelligent sensor technology used by both the chaser and evaders. It emits invisible lasers to detect walls and obstacles in advance.
+
+---
+
+## Chaser Logic - 2025.12.31 Update
+
+* Intelligent Targeting: Prioritizes the nearest living evader as the target.
+* Experience System (XP): Levels up for every evader caught. Each level grants a permanent speed increase of 0.05.
+* Fatigue: Speed gradually decreases as the chase lasts longer. Fatigue resets to 0 upon catching an evader.
+* Deadlock Prevention: If stuck in obstacles for more than 40 frames, it recalculates the path to escape.
+* Special States:
+    * Respawn: If the chaser dies and the count drops below 4, it respawns in a powerful Lv.10 state.
+    * Berserk: Activated when only one evader remains. Speed increases significantly to 7.5, and the chaser can destroy barricades.
+    * Weakness: Speed drops to 25% of the normal rate when entering the central Mud Zone.
+
+---
+
+## Evader Logic
+
+* Energy System: Consumes energy every second. The evader dies of hunger if energy reaches 0.
+* Dash: When the chaser is within 80px, the evader uses energy to increase speed by 1.8x.
+* Flocking Effect: Moving in groups provides a psychological boost, increasing speed by up to 2.5.
+* Cooperation & Counterattack:
+    * Chaser Hunting: If 3 or more evaders gather near the chaser (within 80px), they can eliminate the chaser.
+    * Revival: For every 12 food items collected by the group, one dead teammate is revived.
+* Defense Mechanisms:
+    * Barricade: Deploys brown walls when the chaser is nearby (Installation is prohibited inside the Mud Zone).
+    * Hide: Tends to hide behind obstacles to avoid the chaser's line of sight.
+
+---
+
+## How to Run
+1. Clone or download the repository.
+   ```bash
+   git clone [https://github.com/Dangel165/AI-playing-tag.git](https://github.com/Dangel165/AI-playing-tag.git)
