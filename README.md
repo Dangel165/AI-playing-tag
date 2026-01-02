@@ -1,5 +1,5 @@
-# AI Tag Simulator: Genetic Evolution and Strategy
-# AI 술래잡기 시뮬레이터: 유전 진화 및 전략
+# AI-playing-tag
+# AI 술래잡기 
 
 ---
 
