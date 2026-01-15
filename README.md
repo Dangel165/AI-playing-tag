@@ -1,6 +1,26 @@
 # AI-playing-tag
 # AI 술래잡기 
 
+🚀 What's New in v2.0
+
+### 🧬 Dual AI System
+- **DNA Mode**: Traditional genetic algorithm with predefined behaviors
+- **Neural Network Mode**: Deep learning agents that evolve their own strategies
+- **Real-time switching**: Compare AI approaches in the same environment
+
+### 🎮 Enhanced Game Mechanics
+- **Balanced Combat**: 25 Runners vs 4 Chasers with unique abilities
+- **Dynamic Environment**: Obstacles, mud zones, and destructible barricades
+- **Victory Conditions**: Time-based survival or elimination-based wins
+- **Game State Management**: Proper win/loss detection with auto-restart
+
+### 🔧 Major Bug Fixes
+- **Boundary Wrapping**: Agents no longer disappear at screen edges
+- **Anti-Clustering**: Neural agents maintain proper spacing
+- **Stuck Prevention**: Advanced pathfinding and escape mechanisms
+- **Real-time Fitness**: Live performance tracking for neural networks
+- **Barricade Cooldown**: Strategic building with 2-second limitations
+
 ---
 
 ## Motivation / 개발 이유
@@ -54,26 +74,3 @@
 1. Clone the repository:
    ```bash
    git clone [https://github.com/Dangel165/AI-playing-tag.git](https://github.com/Dangel165/AI-playing-tag.git)
-
-
-
-   ## 🚀 What's New in v2.0
-
-### 🧬 Dual AI System
-- **DNA Mode**: Traditional genetic algorithm with predefined behaviors
-- **Neural Network Mode**: Deep learning agents that evolve their own strategies
-- **Real-time switching**: Compare AI approaches in the same environment
-
-### 🎮 Enhanced Game Mechanics
-- **Balanced Combat**: 25 Runners vs 4 Chasers with unique abilities
-- **Dynamic Environment**: Obstacles, mud zones, and destructible barricades
-- **Victory Conditions**: Time-based survival or elimination-based wins
-- **Game State Management**: Proper win/loss detection with auto-restart
-
-### 🔧 Major Bug Fixes
-- **Boundary Wrapping**: Agents no longer disappear at screen edges
-- **Anti-Clustering**: Neural agents maintain proper spacing
-- **Stuck Prevention**: Advanced pathfinding and escape mechanisms
-- **Real-time Fitness**: Live performance tracking for neural networks
-- **Barricade Cooldown**: Strategic building with 2-second limitations
-
