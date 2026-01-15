@@ -2,450 +2,1803 @@
 <html lang="ko">
 <head>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
-    <style> 
-        body { margin: 0; overflow: hidden; background: #1a1a1a; color: white; font-family: sans-serif; } 
-        #info { position: absolute; top: 15px; left: 15px; pointer-events: none; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 10px; border: 1px solid #444; }
-        .stat-val { color: #52ff52; font-weight: bold; }
-        .alert { color: #ff5252; font-weight: bold; animation: blink 0.5s infinite; }
-        .berserk { color: #ff00ff; font-weight: bold; text-shadow: 0 0 5px #ff00ff; }
-        .chaser-lvl { color: #ff9999; font-size: 0.9em; margin-top: 5px; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    <style>
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #1a1a1a; 
+            color: white; 
+            font-family: sans-serif; 
+        }
+        #info { 
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            pointer-events: none; 
+            background: rgba(0,0,0,0.7); 
+            padding: 15px; 
+            border-radius: 10px; 
+            border: 1px solid #444; 
+        }
+        #controls {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.7);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            pointer-events: all;
+        }
+        .stat-val { 
+            color: #52ff52; 
+            font-weight: bold; 
+        }
+        .alert { 
+            color: #ff5252; 
+            font-weight: bold; 
+            animation: blink 0.5s infinite; 
+        }
+        .berserk { 
+            color: #ff00ff; 
+            font-weight: bold; 
+            text-shadow: 0 0 5px #ff00ff; 
+        }
+        .chaser-lvl { 
+            color: #ff9999; 
+            font-size: 0.9em; 
+            margin-top: 5px; 
+        }
+        .neural-mode {
+            color: #00ffff;
+            font-weight: bold;
+        }
+        .dna-mode {
+            color: #ffff00;
+            font-weight: bold;
+        }
+        button {
+            background: #333;
+            color: white;
+            border: 1px solid #666;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 2px;
+        }
+        button:hover {
+            background: #555;
+        }
+        button.active {
+            background: #0066cc;
+        }
+        @keyframes blink { 
+            0% { opacity: 1; } 
+            50% { opacity: 0.3; } 
+            100% { opacity: 1; } 
+        }
     </style>
 </head>
 <body>
-<div id="info">
-    <h3 style="color:#ff5252; margin-top:0;">세대: <span id="gen">1</span></h3>
-    <p>남은 도망자: <span id="alive" class="stat-val">0</span></p>
-    <p>남은 술래: <span id="cCount" style="color:#ff5252; font-weight:bold;">4</span></p>
-    <div id="chaserLevels" class="chaser-lvl"></div> <p id="statusRow">상태: <span id="cState">추격 중</span></p>
-</div>
-<script>
-let chasers = [];
-let runners = [];
-let obstacles = [];
-let barricades = [];
-let foods = [];
-let generation = 1;
-let runnerCount = 25; 
-let deadRunners = [];
-let deathLocations = [];
-let foodEatenCount = 0; // 부활용 카운트
-let mudZone; // 세이프존
-
-function setup() {
-    createCanvas(windowWidth, windowHeight);
-    // 세이프존 영역 설정
-    mudZone = { x: width/2 - 150, y: height/2 - 150, w: 300, h: 300 };
-    initObstacles();
-    initGame();
-}
-
-function initObstacles() {
-    obstacles = [];
-    while (obstacles.length < 5) {
-        let obs = { x: random(width*0.1, width*0.8), y: random(height*0.1, height*0.8), w: random(130, 200), h: random(130, 200) };
-        // 세이프존 영역 피하기
-        let buffer = 20;
-        let overlap = !(obs.x + obs.w < mudZone.x - buffer || obs.x > mudZone.x + mudZone.w + buffer || 
-                        obs.y + obs.h < mudZone.y - buffer || obs.y > mudZone.y + mudZone.h + buffer);
-        if (!overlap) obstacles.push(obs);
-    }
-}
-
-function initGame() {
-    chasers = [];
-    for(let i=0; i<4; i++) {
-        chasers.push(new Chaser(random(width), random(height)));
-    }
-    barricades = [];
-    foods = [];
-    deathLocations = [];
-    foodEatenCount = 0;
-    for (let i = 0; i < 25; i++) spawnFood(true);
+    <div id="info">
+        <h3 style="color:#ff5252; margin-top:0;">세대: <span id="gen">1</span></h3>
+        <p>제어 모드: <span id="mode" class="dna-mode">DNA</span></p>
+        <p>남은 도망자: <span id="alive" class="stat-val">0</span></p>
+        <p>남은 술래: <span id="cCount" style="color:#ff5252; font-weight:bold;">4</span></p>
+        <div id="chaserLevels" class="chaser-lvl"></div>
+        <p id="statusRow">상태: <span id="cState">추격 중</span></p>
+        <div id="neuralStats" style="display:none;">
+            <p>최고 적합도: <span id="bestFitness" class="stat-val">0</span></p>
+            <p>평균 적합도: <span id="avgFitness" class="stat-val">0</span></p>
+        </div>
+    </div>
     
-    if (deadRunners.length === 0) {
-        for (let i = 0; i < runnerCount; i++) runners.push(new Runner(random(width), random(height)));
-    } else {
-        deadRunners.sort((a, b) => b.score - a.score);
-        let newRunners = [];
-        for(let i=0; i<5; i++) {
-            if(deadRunners[i]) newRunners.push(new Runner(random(width), random(height), deadRunners[i].dna));
-        }
-        while(newRunners.length < runnerCount) {
-            let parent = deadRunners[floor(random(deadRunners.length * 0.4))];
-            newRunners.push(new Runner(random(width), random(height), mutate(parent.dna)));
-        }
-        runners = newRunners;
-        deadRunners = [];
-    }
-}
+    <div id="controls">
+        <button id="dnaBtn" class="active" onclick="setControlMode('DNA')">DNA 모드</button>
+        <button id="neuralBtn" onclick="setControlMode('NEURAL')">신경망 모드</button>
+        <br>
+        <button onclick="savePopulation()">저장</button>
+        <button onclick="loadPopulation()">불러오기</button>
+        <button onclick="restartGame()">다시하기</button>
+        <br>
+        <label><input type="checkbox" id="showVisualization"> 신경망 시각화</label>
+        <div id="gameResult" style="display:none; margin-top:10px; padding:10px; border:2px solid #fff; border-radius:5px;">
+            <div id="winnerText" style="font-size:16px; font-weight:bold; text-align:center;"></div>
+            <div id="gameTime" style="font-size:12px; text-align:center; margin-top:5px;"></div>
+        </div>
+    </div>
 
-function mutate(dna) {
-    return {
-        maxSpeed: constrain(dna.maxSpeed + random(-0.3, 0.3), 3, 6.5),
-        viewDist: constrain(dna.viewDist + random(-30, 30), 180, 450),
-        foodDist: constrain(dna.foodDist + random(-30, 30), 150, 500),
-        barricadeProb: constrain(dna.barricadeProb + random(-0.02, 0.02), 0.01, 0.2)
-    };
-}
-
-function spawnFood(isInitial = false) {
-    let bestPos = null;
-    let maxScore = -1;
-    for (let i = 0; i < 20; i++) {
-        let x = random(width);
-        let y = random(height);
-        let inWall = false;
-        for (let obs of obstacles) {
-            if (x > obs.x - 20 && x < obs.x + obs.w + 20 && y > obs.y - 20 && y < obs.y + obs.h + 20) { inWall = true; break; }
-        }
-        if (inWall) continue;
-        let refPos = chasers.length > 0 ? chasers[0].pos : createVector(width/2, height/2);
-        let score = isInitial ? 0 : p5.Vector.dist(createVector(x, y), refPos);
-        if (score > maxScore) { maxScore = score; bestPos = createVector(x, y); }
-    }
-    if (bestPos) foods.push(bestPos);
-}
-
-function draw() {
-    background(25);
-    updateUI();
-    if (frameCount % 60 === 0 && foods.length < 40) spawnFood();
-
-    // 세이프존(진흙탕) 그리기
-    fill(50, 40, 30, 150); rect(mudZone.x, mudZone.y, mudZone.w, mudZone.h, 30);
-    fill(100, 80, 60, 100); textAlign(CENTER); textSize(12); text("MUD ZONE (SLOW)", mudZone.x + mudZone.w/2, mudZone.y + mudZone.h/2);
-
-    let currentTime = millis();
-    barricades = barricades.filter(bar => currentTime - bar.createdAt < 3000);
-
-    if (chasers.length < 4 && frameCount % 180 === 0) {
-        let spawned = new Chaser(random(width), random(height));
-        spawned.level = 10; 
-        chasers.push(spawned);
-    }
-
-    let allWalls = [...obstacles, ...barricades];
-
-    fill(55); noStroke();
-    for (let obs of obstacles) rect(obs.x, obs.y, obs.w, obs.h);
-    fill(139, 69, 19); stroke(100, 50, 10);
-    for (let bar of barricades) rect(bar.x, bar.y, bar.w, bar.h);
-    fill(255, 215, 0); noStroke();
-    for (let f of foods) ellipse(f.x, f.y, 7, 7);
-
-    if (runners.length > 0 && chasers.length > 0) {
-        for (let c of chasers) {
-            c.isBerserk = (chasers.length === 1);
-            let target = c.selectTarget(runners);
-            let avoidWalls = c.isBerserk ? obstacles : allWalls;
-            c.chase(target, avoidWalls);
-            c.update(allWalls);
-            c.display();
-        }
-    } else if (runners.length === 0) {
-        generation++;
-        initGame();
-    }
-
-    for (let i = runners.length - 1; i >= 0; i--) {
-        let r = runners[i];
-        r.flock(runners);
-        r.searchFood(foods);
+    <script>
+        // === 기존 게임 변수들 ===
+        let chasers = [];
+        let runners = [];
+        let obstacles = [];
+        let barricades = [];
+        let foods = [];
+        let generation = 1;
+        let runnerCount = 25;
+        let deadRunners = [];
+        let deathLocations = [];
+        let foodEatenCount = 0;
+        let mudZone;
         
-        let neighbors = 0;
-        for(let other of runners) {
-            if(p5.Vector.dist(r.pos, other.pos) < 120) neighbors++;
-        }
-        r.boostSpeed = map(neighbors, 1, 10, 0, 2.5);
-
-        for(let c of chasers) {
-            r.reactToChaser(c);
-            r.hide(c, allWalls);
-        }
+        // === 신경망 관련 변수들 ===
+        let controlMode = 'DNA'; // 'DNA' 또는 'NEURAL'
+        let evolutionManager;
+        let networkVisualizer;
+        let selectedRunner = null;
+        let showVisualization = false;
         
-        r.avoid(allWalls);
-        r.update(allWalls);
-        r.display();
+        // === 게임 상태 관련 변수들 ===
+        let gameState = 'playing'; // 'playing', 'runners_win', 'chasers_win'
+        let gameStartTime = 0;
+        let maxGameTime = 120000; // 2분 (120초)
 
-        for (let j = chasers.length - 1; j >= 0; j--) {
-            let c = chasers[j];
-            let d = p5.Vector.dist(c.pos, r.pos);
+        // === Matrix 클래스 ===
+        class Matrix {
+            constructor(rows, cols) {
+                this.rows = rows;
+                this.cols = cols;
+                this.data = [];
+                for (let i = 0; i < this.rows; i++) {
+                    this.data[i] = [];
+                    for (let j = 0; j < this.cols; j++) {
+                        this.data[i][j] = 0;
+                    }
+                }
+            }
+
+            static fromArray(arr) {
+                let m = new Matrix(arr.length, 1);
+                for (let i = 0; i < arr.length; i++) {
+                    m.data[i][0] = arr[i];
+                }
+                return m;
+            }
+
+            toArray() {
+                let arr = [];
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        arr.push(this.data[i][j]);
+                    }
+                }
+                return arr;
+            }
+
+            randomize() {
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        this.data[i][j] = random(-1, 1);
+                    }
+                }
+            }
+
+            static multiply(a, b) {
+                if (a.cols !== b.rows) {
+                    console.log('Columns of A must match rows of B.');
+                    return;
+                }
+                let result = new Matrix(a.rows, b.cols);
+                for (let i = 0; i < result.rows; i++) {
+                    for (let j = 0; j < result.cols; j++) {
+                        let sum = 0;
+                        for (let k = 0; k < a.cols; k++) {
+                            sum += a.data[i][k] * b.data[k][j];
+                        }
+                        result.data[i][j] = sum;
+                    }
+                }
+                return result;
+            }
+
+            multiply(n) {
+                if (n instanceof Matrix) {
+                    for (let i = 0; i < this.rows; i++) {
+                        for (let j = 0; j < this.cols; j++) {
+                            this.data[i][j] *= n.data[i][j];
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < this.rows; i++) {
+                        for (let j = 0; j < this.cols; j++) {
+                            this.data[i][j] *= n;
+                        }
+                    }
+                }
+            }
+
+            add(n) {
+                if (n instanceof Matrix) {
+                    for (let i = 0; i < this.rows; i++) {
+                        for (let j = 0; j < this.cols; j++) {
+                            this.data[i][j] += n.data[i][j];
+                        }
+                    }
+                } else {
+                    for (let i = 0; i < this.rows; i++) {
+                        for (let j = 0; j < this.cols; j++) {
+                            this.data[i][j] += n;
+                        }
+                    }
+                }
+            }
+
+            static subtract(a, b) {
+                let result = new Matrix(a.rows, a.cols);
+                for (let i = 0; i < result.rows; i++) {
+                    for (let j = 0; j < result.cols; j++) {
+                        result.data[i][j] = a.data[i][j] - b.data[i][j];
+                    }
+                }
+                return result;
+            }
+
+            static transpose(matrix) {
+                let result = new Matrix(matrix.cols, matrix.rows);
+                for (let i = 0; i < matrix.rows; i++) {
+                    for (let j = 0; j < matrix.cols; j++) {
+                        result.data[j][i] = matrix.data[i][j];
+                    }
+                }
+                return result;
+            }
+
+            map(func) {
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        let val = this.data[i][j];
+                        this.data[i][j] = func(val);
+                    }
+                }
+            }
+
+            static map(matrix, func) {
+                let result = new Matrix(matrix.rows, matrix.cols);
+                for (let i = 0; i < matrix.rows; i++) {
+                    for (let j = 0; j < matrix.cols; j++) {
+                        let val = matrix.data[i][j];
+                        result.data[i][j] = func(val);
+                    }
+                }
+                return result;
+            }
+
+            copy() {
+                let m = new Matrix(this.rows, this.cols);
+                for (let i = 0; i < this.rows; i++) {
+                    for (let j = 0; j < this.cols; j++) {
+                        m.data[i][j] = this.data[i][j];
+                    }
+                }
+                return m;
+            }
+        }
+
+        // === 활성화 함수들 ===
+        function sigmoid(x) {
+            return 1 / (1 + Math.exp(-x));
+        }
+
+        function tanh_activation(x) {
+            return Math.tanh(x);
+        }
+
+        // === NeuralNetwork 클래스 ===
+        class NeuralNetwork {
+            constructor(inputNodes, hiddenNodes, outputNodes) {
+                this.inputNodes = inputNodes;
+                this.hiddenNodes = hiddenNodes;
+                this.outputNodes = outputNodes;
+
+                this.weightsIH = new Matrix(this.hiddenNodes, this.inputNodes);
+                this.weightsHO = new Matrix(this.outputNodes, this.hiddenNodes);
+                this.weightsIH.randomize();
+                this.weightsHO.randomize();
+
+                this.biasH = new Matrix(this.hiddenNodes, 1);
+                this.biasO = new Matrix(this.outputNodes, 1);
+                this.biasH.randomize();
+                this.biasO.randomize();
+            }
+
+            predict(inputArray) {
+                let inputs = Matrix.fromArray(inputArray);
+                let hidden = Matrix.multiply(this.weightsIH, inputs);
+                hidden.add(this.biasH);
+                hidden.map(sigmoid);
+
+                let output = Matrix.multiply(this.weightsHO, hidden);
+                output.add(this.biasO);
+                output.map(tanh_activation);
+
+                return output.toArray();
+            }
+
+            copy() {
+                let copy = new NeuralNetwork(this.inputNodes, this.hiddenNodes, this.outputNodes);
+                copy.weightsIH = this.weightsIH.copy();
+                copy.weightsHO = this.weightsHO.copy();
+                copy.biasH = this.biasH.copy();
+                copy.biasO = this.biasO.copy();
+                return copy;
+            }
+
+            mutate(mutationRate, mutationMagnitude) {
+                function mutateValue(val) {
+                    if (random(1) < mutationRate) {
+                        return val + random(-mutationMagnitude, mutationMagnitude);
+                    }
+                    return val;
+                }
+
+                this.weightsIH.map(mutateValue);
+                this.weightsHO.map(mutateValue);
+                this.biasH.map(mutateValue);
+                this.biasO.map(mutateValue);
+            }
+
+            static crossover(parentA, parentB) {
+                let child = new NeuralNetwork(parentA.inputNodes, parentA.hiddenNodes, parentA.outputNodes);
+                
+                // 가중치 교차
+                for (let i = 0; i < child.weightsIH.rows; i++) {
+                    for (let j = 0; j < child.weightsIH.cols; j++) {
+                        child.weightsIH.data[i][j] = random(1) < 0.5 ? 
+                            parentA.weightsIH.data[i][j] : parentB.weightsIH.data[i][j];
+                    }
+                }
+
+                for (let i = 0; i < child.weightsHO.rows; i++) {
+                    for (let j = 0; j < child.weightsHO.cols; j++) {
+                        child.weightsHO.data[i][j] = random(1) < 0.5 ? 
+                            parentA.weightsHO.data[i][j] : parentB.weightsHO.data[i][j];
+                    }
+                }
+
+                // 편향 교차
+                for (let i = 0; i < child.biasH.rows; i++) {
+                    child.biasH.data[i][0] = random(1) < 0.5 ? 
+                        parentA.biasH.data[i][0] : parentB.biasH.data[i][0];
+                }
+
+                for (let i = 0; i < child.biasO.rows; i++) {
+                    child.biasO.data[i][0] = random(1) < 0.5 ? 
+                        parentA.biasO.data[i][0] : parentB.biasO.data[i][0];
+                }
+
+                return child;
+            }
+
+            toJSON() {
+                return {
+                    inputNodes: this.inputNodes,
+                    hiddenNodes: this.hiddenNodes,
+                    outputNodes: this.outputNodes,
+                    weightsIH: this.weightsIH.data,
+                    weightsHO: this.weightsHO.data,
+                    biasH: this.biasH.data,
+                    biasO: this.biasO.data
+                };
+            }
+
+            static fromJSON(data) {
+                let nn = new NeuralNetwork(data.inputNodes, data.hiddenNodes, data.outputNodes);
+                nn.weightsIH.data = data.weightsIH;
+                nn.weightsHO.data = data.weightsHO;
+                nn.biasH.data = data.biasH;
+                nn.biasO.data = data.biasO;
+                return nn;
+            }
+        }
+
+        // === 감각 시스템 ===
+        class SensorySystem {
+            static getSensoryInputs(runner, chasers, foods, boundaries) {
+                let inputs = [];
+                
+                // 가장 가까운 추격자 정보
+                let nearestChaser = this.findNearest(runner, chasers);
+                inputs.push(this.normalizeDistance(nearestChaser.distance, 500)); // 거리
+                inputs.push(this.normalizeAngle(nearestChaser.angle)); // 각도
+                
+                // 가장 가까운 음식 정보
+                let nearestFood = this.findNearest(runner, foods);
+                inputs.push(this.normalizeDistance(nearestFood.distance, 500)); // 거리
+                inputs.push(this.normalizeAngle(nearestFood.angle)); // 각도
+                
+                // 벽까지의 거리 (경계)
+                inputs.push(this.normalizeDistance(runner.pos.x, width)); // 왼쪽 벽
+                inputs.push(this.normalizeDistance(width - runner.pos.x, width)); // 오른쪽 벽
+                inputs.push(this.normalizeDistance(runner.pos.y, height)); // 위쪽 벽
+                inputs.push(this.normalizeDistance(height - runner.pos.y, height)); // 아래쪽 벽
+                
+                // 에너지 레벨
+                inputs.push(runner.energy / 150);
+                
+                // 주변 이웃 수
+                let neighbors = 0;
+                for (let other of runners) {
+                    if (other !== runner && p5.Vector.dist(runner.pos, other.pos) < 120) {
+                        neighbors++;
+                    }
+                }
+                inputs.push(Math.min(neighbors / 10, 1)); // 최대 10으로 정규화
+                
+                return inputs;
+            }
+
+            static findNearest(runner, entities) {
+                if (entities.length === 0) {
+                    return { distance: 1000, angle: 0 };
+                }
+                
+                let minDist = Infinity;
+                let nearestEntity = null;
+                
+                for (let entity of entities) {
+                    let pos = entity.pos || entity; // 음식은 벡터, 추격자는 객체
+                    let dist = p5.Vector.dist(runner.pos, pos);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearestEntity = pos;
+                    }
+                }
+                
+                let angle = Math.atan2(nearestEntity.y - runner.pos.y, nearestEntity.x - runner.pos.x);
+                return { distance: minDist, angle: angle };
+            }
+
+            static normalizeDistance(distance, maxDistance) {
+                return Math.min(distance / maxDistance, 1);
+            }
+
+            static normalizeAngle(angle) {
+                return angle / Math.PI; // -1 to 1 범위로 정규화
+            }
+        }
+
+        // === 진화 관리자 ===
+        class EvolutionManager {
+            constructor() {
+                this.generation = 1;
+                this.mutationRate = 0.15; 
+                this.mutationMagnitude = 0.3; 
+                this.bestFitness = 0;
+                this.avgFitness = 0;
+            }
+
+            evolve() {
+                // 적합도 계산
+                for (let runner of deadRunners) {
+                    runner.fitness = this.calculateFitness(runner);
+                }
+
+                // 적합도 기준 정렬
+                deadRunners.sort((a, b) => b.fitness - a.fitness);
+
+                // 통계 업데이트
+                this.bestFitness = deadRunners.length > 0 ? deadRunners[0].fitness : 0;
+                this.avgFitness = deadRunners.length > 0 ? 
+                    deadRunners.reduce((sum, r) => sum + r.fitness, 0) / deadRunners.length : 0;
+
+                // 새로운 세대 생성
+                let newRunners = [];
+                
+                // 상위 30% 엘리트 보존 
+                let eliteCount = Math.floor(runnerCount * 0.3);
+                for (let i = 0; i < eliteCount && i < deadRunners.length; i++) {
+                    let elite = new Runner(random(width), random(height));
+                    elite.brain = deadRunners[i].brain.copy();
+                    // 엘리트도 약간의 돌연변이 적용
+                    elite.brain.mutate(this.mutationRate * 0.5, this.mutationMagnitude * 0.5);
+                    elite.useBrain = true;
+                    newRunners.push(elite);
+                }
+
+                // 나머지는 교차와 돌연변이로 생성
+                while (newRunners.length < runnerCount) {
+                    let parentA = this.selectParent();
+                    let parentB = this.selectParent();
+                    
+                    let child = new Runner(random(width), random(height));
+                    child.brain = NeuralNetwork.crossover(parentA.brain, parentB.brain);
+                    child.brain.mutate(this.mutationRate, this.mutationMagnitude);
+                    child.useBrain = true;
+                    
+                    newRunners.push(child);
+                }
+
+                runners = newRunners;
+                this.generation++;
+                generation = this.generation;
+            }
+
+            selectParent() {
+                if (deadRunners.length === 0) {
+                    // 기본 신경망으로 새 러너 생성
+                    let runner = new Runner(random(width), random(height));
+                    runner.initBrain(10, 12, 2);
+                    return runner;
+                }
+
+                // 토너먼트 선택
+                let tournamentSize = 3;
+                let best = null;
+                let bestFitness = -Infinity;
+                
+                for (let i = 0; i < tournamentSize; i++) {
+                    let candidate = deadRunners[Math.floor(random(deadRunners.length))];
+                    if (candidate.fitness > bestFitness) {
+                        bestFitness = candidate.fitness;
+                        best = candidate;
+                    }
+                }
+                
+                return best;
+            }
+
+            calculateFitness(runner) {
+                let survivalTime = runner.survivalTime || frameCount;
+                let foodCollected = runner.foodCollected || 0;
+                let distanceTraveled = runner.distanceTraveled || 0;
+                
+                // 생존 시간에 더 큰 가중치 부여
+                return survivalTime * 2.0 + foodCollected * 100 + distanceTraveled * 0.02;
+            }
+        }
+
+        function setup() {
+            createCanvas(windowWidth, windowHeight);
+            mudZone = { x: width/2 - 150, y: height/2 - 150, w: 300, h: 300 };
             
-            if (neighbors >= 3 && d < 80) { 
-                chasers.splice(j, 1);
-            } else if (d < 22) {
-                deathLocations.push(r.pos.copy());
-                c.level++; // 경험치 로직 유지
-                c.fatigue = 0;
-                r.score = frameCount;
-                deadRunners.push(r);
-                runners.splice(i, 1);
-                break; 
+            // 진화 관리자 초기화
+            evolutionManager = new EvolutionManager();
+            
+            // 초기 적합도 값 설정
+            evolutionManager.bestFitness = 0;
+            evolutionManager.avgFitness = 0;
+            
+            initObstacles();
+            initGame();
+        }
+
+        function initObstacles() {
+            obstacles = [];
+            while (obstacles.length < 5) {
+                let obs = { 
+                    x: random(width*0.1, width*0.8), 
+                    y: random(height*0.1, height*0.8), 
+                    w: random(130, 200), 
+                    h: random(130, 200) 
+                };
+                let buffer = 20;
+                let overlap = !(obs.x + obs.w < mudZone.x - buffer || 
+                               obs.x > mudZone.x + mudZone.w + buffer || 
+                               obs.y + obs.h < mudZone.y - buffer || 
+                               obs.y > mudZone.y + mudZone.h + buffer);
+                if (!overlap) obstacles.push(obs);
             }
         }
 
-        if (runners[i] && r.energy <= 0) {
-            deadRunners.push(r);
-            runners.splice(i, 1);
-        }
-    }
-}
-
-function updateUI() {
-    document.getElementById('gen').innerText = generation;
-    document.getElementById('alive').innerText = runners.length;
-    document.getElementById('cCount').innerText = chasers.length;
-    
-    // 술래 레벨 UI 업데이트 추가
-    let lvStr = chasers.map((c, i) => `술래${i+1}: Lv.${c.level}`).join(' | ');
-    document.getElementById('chaserLevels').innerText = lvStr;
-
-    let isStuck = chasers.some(c => c.stuckFrames > 30);
-    let anyBerserk = chasers.some(c => c.isBerserk);
-    
-    let stateEl = document.getElementById('cState');
-    if (anyBerserk) {
-        stateEl.innerText = "광폭화 모드!!!";
-        stateEl.className = "berserk";
-    } else if (isStuck) {
-        stateEl.innerText = "경로 재탐색 중!";
-        stateEl.className = "alert";
-    } else {
-        stateEl.innerText = "추격 중";
-        stateEl.className = "";
-    }
-}
-
-function resolveCollision(agent, walls, isChaser = false) {
-    for (let i = walls.length - 1; i >= 0; i--) {
-        let w = walls[i];
-        let cx = constrain(agent.pos.x, w.x, w.x + w.w);
-        let cy = constrain(agent.pos.y, w.y, w.y + w.h);
-        let d = dist(agent.pos.x, agent.pos.y, cx, cy);
-        if (d < agent.radius) {
-            if (isChaser && agent.isBerserk && walls[i].createdAt) {
-                barricades.splice(barricades.indexOf(walls[i]), 1);
-                continue; 
-            }
-
-            let overlap = agent.radius - d;
-            let push = createVector(agent.pos.x - cx, agent.pos.y - cy);
-            if (push.mag() === 0) push = p5.Vector.random2D();
-            push.setMag(overlap);
-            agent.pos.add(push);
-            let normal = push.copy().normalize();
-            let dot = agent.vel.dot(normal);
-            if (dot < 0) {
-                let vNormal = p5.Vector.mult(normal, dot);
-                agent.vel.sub(vNormal);
-            }
-        }
-    }
-}
-
-class Chaser {
-    constructor(x, y) {
-        this.pos = createVector(x, y);
-        this.vel = createVector(0, 0);
-        this.acc = createVector(0, 0);
-        this.radius = 15;
-        this.level = 1;
-        this.maxSpeed = 4.3;
-        this.stuckFrames = 0;
-        this.fatigue = 0;
-        this.isBerserk = false;
-    }
-
-    selectTarget(list) {
-        let minD = Infinity; let target = list[0];
-        for (let r of list) {
-            let d = p5.Vector.dist(this.pos, r.pos);
-            if (d < minD) { minD = d; target = r; }
-        }
-        return target;
-    }
-
-    chase(t, walls) {
-        if(!t) return;
-        this.fatigue += 0.001;
-        let speedPenalty = min(this.fatigue, 1.5);
-        
-        let currentMaxSpeed = this.isBerserk ? 7.5 : max(2.5, this.maxSpeed + (this.level * 0.05) - speedPenalty);
-        
-        // 추가: 진흙탕 구역 진입 시 속도 대폭 감소
-        if (this.pos.x > mudZone.x && this.pos.x < mudZone.x + mudZone.w && 
-            this.pos.y > mudZone.y && this.pos.y < mudZone.y + mudZone.h) {
-            currentMaxSpeed *= 0.25;
-        }
-
-        let desired = p5.Vector.sub(t.pos, this.pos).setMag(currentMaxSpeed);
-        let sensorAngles = [0, QUARTER_PI, -QUARTER_PI];
-        let blocked = false;
-        let avoidForce = createVector(0, 0);
-        for (let angle of sensorAngles) {
-            let look = this.vel.copy().rotate(angle).setMag(60);
-            let sensorPos = p5.Vector.add(this.pos, look);
-            for (let w of walls) {
-                if (sensorPos.x > w.x && sensorPos.x < w.x + w.w && sensorPos.y > w.y && sensorPos.y < w.y + w.h) {
-                    blocked = true;
-                    let escape = look.copy().rotate(angle === 0 ? HALF_PI : -angle).setMag(currentMaxSpeed);
-                    avoidForce.add(escape);
+        function initGame() {
+            // 게임 상태 초기화
+            gameState = 'playing';
+            gameStartTime = millis();
+            document.getElementById('gameResult').style.display = 'none';
+            
+            chasers = [];
+            for(let i=0; i<4; i++) {
+                let chaser = new Chaser(random(width), random(height));
+                if (controlMode === 'NEURAL') {
+                    chaser.initBrain(12, 16, 2); // 술래는 더 복잡한 뇌 구조
+                    chaser.useBrain = true;
                 }
+                chasers.push(chaser);
             }
-        }
-        if (this.vel.mag() < 0.8) this.stuckFrames++;
-        else this.stuckFrames = 0;
-        
-        if (this.stuckFrames > 40) {
-            let escape = createVector(-this.vel.y, this.vel.x).setMag(currentMaxSpeed * 2);
-            this.acc.add(escape);
-            if (this.stuckFrames > 60) this.stuckFrames = 0;
-        } else if (blocked) {
-            this.acc.add(p5.Vector.sub(avoidForce, this.vel).limit(1.0));
-        } else {
-            this.acc.add(p5.Vector.sub(desired, this.vel).limit(0.5));
-        }
-    }
-
-    update(walls) {
-        this.vel.add(this.acc);
-        this.vel.limit(this.isBerserk ? 9 : 7);
-        this.pos.add(this.vel);
-        this.acc.mult(0);
-        resolveCollision(this, walls, true);
-    }
-
-    display() {
-        if (this.isBerserk) {
-            fill(255, 0, 255); stroke(255); strokeWeight(3);
-        } else {
-            fill(255, 50, 50); stroke(255); strokeWeight(2);
-        }
-        ellipse(this.pos.x, this.pos.y, this.radius * 2, this.radius * 2);
-        
-        // 추가: 머리 위 레벨 표시
-        fill(255); noStroke(); textAlign(CENTER); text("Lv." + this.level, this.pos.x, this.pos.y - 20);
-
-        let fColor = this.isBerserk ? 255 : map(min(this.fatigue, 1.5), 0, 1.5, 255, 100);
-        stroke(this.isBerserk ? color(255,0,255) : color(fColor, 50, 50));
-        line(this.pos.x, this.pos.y, this.pos.x + this.vel.x*5, this.pos.y + this.vel.y*5);
-    }
-}
-
-class Runner {
-    constructor(x, y, dna) {
-        this.pos = createVector(x, y);
-        this.vel = p5.Vector.random2D();
-        this.acc = createVector(0, 0);
-        this.radius = 11;
-        this.dna = dna ? dna : { maxSpeed: random(3.5, 5.5), viewDist: random(200, 350), foodDist: random(250, 450), barricadeProb: 0.05 };
-        this.energy = 100;
-        this.boredom = 0;
-        this.score = 0;
-        this.boostSpeed = 0;
-        this.isDashing = false;
-    }
-
-    searchFood(foods) {
-        if (this.energy > 90 && this.boredom < 100) return;
-        let minD = Infinity; let bestF = null;
-        for (let f of foods) {
-            let d = p5.Vector.dist(this.pos, f);
-            if (d < minD && d < this.dna.foodDist) { minD = d; bestF = f; }
-        }
-        if (bestF) {
-            this.acc.add(p5.Vector.sub(bestF, this.pos).setMag(this.dna.maxSpeed).sub(this.vel).limit(0.3));
-            if (minD < 15) { 
-                foods.splice(foods.indexOf(bestF), 1); 
-                this.energy = min(this.energy + 45, 150); 
-                this.boredom = 0; 
-                // 추가: 동료 부활 로직
-                foodEatenCount++;
-                if (foodEatenCount >= 12 && deadRunners.length > 0) {
-                    let r = deadRunners.shift();
-                    runners.push(new Runner(random(width), random(height), r.dna));
-                    foodEatenCount = 0;
+            
+            barricades = [];
+            foods = [];
+            deathLocations = [];
+            foodEatenCount = 0;
+            
+            for (let i = 0; i < 25; i++) spawnFood(true);
+            
+            if (deadRunners.length === 0) {
+                // 첫 세대 초기화
+                for (let i = 0; i < runnerCount; i++) {
+                    let runner = new Runner(random(width), random(height));
+                    if (controlMode === 'NEURAL') {
+                        runner.initBrain(10, 12, 2);
+                        runner.useBrain = true;
+                    }
+                    runners.push(runner);
                 }
-            }
-        }
-    }
-
-    reactToChaser(c) {
-        let d = p5.Vector.dist(this.pos, c.pos);
-        if (d < this.dna.viewDist) {
-            let currentMax = this.dna.maxSpeed;
-            if (d < 80 && this.energy > 10) {
-                currentMax *= 1.8;
-                this.energy -= 0.15;
-                this.isDashing = true;
             } else {
+                // 진화 또는 DNA 기반 번식
+                if (controlMode === 'NEURAL') {
+                    evolutionManager.evolve();
+                } else {
+                    // 기존 DNA 진화 로직
+                    deadRunners.sort((a, b) => b.score - a.score);
+                    let newRunners = [];
+                    for(let i=0; i<5; i++) {
+                        if(deadRunners[i]) {
+                            newRunners.push(new Runner(random(width), random(height), deadRunners[i].dna));
+                        }
+                    }
+                    while(newRunners.length < runnerCount) {
+                        let parent = deadRunners[floor(random(deadRunners.length * 0.4))];
+                        newRunners.push(new Runner(random(width), random(height), mutate(parent.dna)));
+                    }
+                    runners = newRunners;
+                }
+                deadRunners = [];
+            }
+        }
+
+        function mutate(dna) {
+            return {
+                maxSpeed: constrain(dna.maxSpeed + random(-0.4, 0.4), 3.5, 7.0), // 범위 확장
+                viewDist: constrain(dna.viewDist + random(-40, 40), 180, 500), // 범위 확장
+                foodDist: constrain(dna.foodDist + random(-40, 40), 200, 600), // 범위 확장
+                barricadeProb: constrain(dna.barricadeProb + random(-0.03, 0.03), 0.01, 0.25) // 범위 확장
+            };
+        }
+
+        function spawnFood(isInitial = false) {
+            let bestPos = null;
+            let maxScore = -1;
+            for (let i = 0; i < 20; i++) {
+                let x = random(width);
+                let y = random(height);
+                let inWall = false;
+                for (let obs of obstacles) {
+                    if (x > obs.x - 20 && x < obs.x + obs.w + 20 && 
+                        y > obs.y - 20 && y < obs.y + obs.h + 20) { 
+                        inWall = true; 
+                        break; 
+                    }
+                }
+                if (inWall) continue;
+                let refPos = chasers.length > 0 ? chasers[0].pos : createVector(width/2, height/2);
+                let score = isInitial ? 0 : p5.Vector.dist(createVector(x, y), refPos);
+                if (score > maxScore) { 
+                    maxScore = score; 
+                    bestPos = createVector(x, y); 
+                }
+            }
+            if (bestPos) foods.push(bestPos);
+        }
+
+        // === 수정된 Runner 클래스 ===
+        class Runner {
+            constructor(x, y, dna) {
+                this.pos = createVector(x, y);
+                this.vel = p5.Vector.random2D();
+                this.vel.setMag(random(1, 3)); // 초기 속도 설정
+                this.acc = createVector(0, 0);
+                this.radius = 11;
+                this.dna = dna ? dna : { 
+                    maxSpeed: random(4.0, 6.0), // 3.5-5.5 -> 4.0-6.0으로 증가
+                    viewDist: random(220, 380), // 200-350 -> 220-380으로 증가
+                    foodDist: random(280, 520), // 250-450 -> 280-520으로 증가
+                    barricadeProb: 0.08 // 0.05 -> 0.08로 증가
+                };
+                this.energy = 100;
+                this.boredom = 0;
+                this.score = 0;
+                this.boostSpeed = 0;
                 this.isDashing = false;
+                this.lastBarricadeTime = 0; // 바리케이드 쿨다운 추가
+                
+                // 신경망 관련 속성
+                this.brain = null;
+                this.useBrain = false;
+                this.fitness = 0;
+                this.survivalTime = 0;
+                this.foodCollected = 0;
+                this.distanceTraveled = 0;
+                this.lastPos = this.pos.copy();
             }
-            this.acc.add(p5.Vector.sub(this.pos, c.pos).setMag(currentMax).sub(this.vel).limit(0.6));
+
+            initBrain(inputNodes, hiddenNodes, outputNodes) {
+                this.brain = new NeuralNetwork(inputNodes, hiddenNodes, outputNodes);
+                this.useBrain = true;
+            }
+
+            thinkAndMove(chasers, foods, boundaries) {
+                if (!this.brain) return;
+                
+                let inputs = SensorySystem.getSensoryInputs(this, chasers, foods, boundaries);
+                let outputs = this.brain.predict(inputs);
+                
+                // 신경망 출력을 가속도로 변환 (더 강하게)
+                let xAccel = outputs[0] * this.dna.maxSpeed * 2.0; // 1.5 -> 2.0으로 증가
+                let yAccel = outputs[1] * this.dna.maxSpeed * 2.0;
+                
+                this.acc.add(createVector(xAccel, yAccel).limit(1.5)); // 1.2 -> 1.5로 증가
+                
+                // 기본적인 벽 회피 로직 추가 (신경망이 학습할 때까지)
+                this.avoidWallsBasic();
+                
+                // 기본 움직임 보장 - 속도가 너무 낮으면 랜덤 움직임 추가
+                if (this.vel.mag() < 1.0) {
+                    let randomMove = p5.Vector.random2D();
+                    randomMove.setMag(this.dna.maxSpeed * 0.5);
+                    this.acc.add(randomMove);
+                }
+            }
+
+            avoidWallsBasic() {
+                let sensor = p5.Vector.add(this.pos, this.vel.copy().setMag(50));
+                
+                // 화면 경계 회피 - 더 강한 힘으로
+                if (sensor.x < 50) this.acc.add(createVector(3, 0));
+                if (sensor.x > width - 50) this.acc.add(createVector(-3, 0));
+                if (sensor.y < 50) this.acc.add(createVector(0, 3));
+                if (sensor.y > height - 50) this.acc.add(createVector(0, -3));
+                
+                // 장애물 회피 - 더 넓은 감지 범위와 강한 힘
+                for (let obs of obstacles) {
+                    if (sensor.x > obs.x - 40 && sensor.x < obs.x + obs.w + 40 && 
+                        sensor.y > obs.y - 40 && sensor.y < obs.y + obs.h + 40) {
+                        let escape = p5.Vector.sub(this.pos, createVector(obs.x + obs.w/2, obs.y + obs.h/2));
+                        escape.setMag(2.5); // 1.5 -> 2.5로 증가
+                        this.acc.add(escape);
+                    }
+                }
+                
+                // 다른 러너들과의 분리 (신경망 모드에서 추가) - DNA 모드와 동일한 로직 적용
+                let sep = createVector(0, 0);
+                let count = 0;
+                for (let other of runners) {
+                    if (other !== this) {
+                        let d = p5.Vector.dist(this.pos, other.pos);
+                        if (d > 0 && d < 80) { // DNA 모드보다 더 넓은 분리 거리 (60 -> 80)
+                            sep.add(p5.Vector.sub(this.pos, other.pos).normalize().div(d)); 
+                            count++; 
+                        }
+                    }
+                }
+                if (count > 0) {
+                    this.acc.add(sep.setMag(this.dna.maxSpeed).limit(1.0)); // DNA 모드보다 더 강한 분리 (0.6 -> 1.0)
+                }
+                
+                // 빙빙도는 문제 해결: 속도가 너무 낮으면 랜덤 방향으로 힘 추가
+                if (this.vel.mag() < 0.8) { // 0.5 -> 0.8로 증가 (더 빠른 반응)
+                    let randomForce = p5.Vector.random2D();
+                    randomForce.setMag(2.5); // 2.0 -> 2.5로 증가
+                    this.acc.add(randomForce);
+                }
+                
+                // 추가: 같은 방향으로 너무 오래 가지 않도록 약간의 노이즈 추가
+                if (frameCount % 30 === 0) {
+                    let noise = p5.Vector.random2D();
+                    noise.setMag(0.5); // 0.3 -> 0.5로 증가
+                    this.acc.add(noise);
+                }
+                
+                // 기본 움직임 보장 - 가속도가 너무 낮으면 최소 움직임 추가
+                if (this.acc.mag() < 0.1) {
+                    let baseMove = p5.Vector.random2D();
+                    baseMove.setMag(0.3);
+                    this.acc.add(baseMove);
+                }
+            }
+
+            // 기존 메서드들 유지
+            searchFood(foods) {
+                if (this.energy > 90 && this.boredom < 100) return;
+                let minD = Infinity; 
+                let bestF = null;
+                for (let f of foods) {
+                    let d = p5.Vector.dist(this.pos, f);
+                    if (d < minD && d < this.dna.foodDist) { 
+                        minD = d; 
+                        bestF = f; 
+                    }
+                }
+                if (bestF) {
+                    this.acc.add(p5.Vector.sub(bestF, this.pos).setMag(this.dna.maxSpeed).sub(this.vel).limit(0.3));
+                    if (minD < 15) { 
+                        foods.splice(foods.indexOf(bestF), 1); 
+                        this.energy = min(this.energy + 45, 150); 
+                        this.boredom = 0;
+                        this.foodCollected++;
+                        
+                        foodEatenCount++;
+                        if (foodEatenCount >= 12 && deadRunners.length > 0) {
+                            let r = deadRunners.shift();
+                            let newRunner = new Runner(random(width), random(height), r.dna);
+                            
+                            // 현재 모드에 맞게 설정
+                            if (controlMode === 'NEURAL') {
+                                if (r.brain) {
+                                    newRunner.brain = r.brain.copy();
+                                } else {
+                                    newRunner.initBrain(10, 12, 2);
+                                }
+                                newRunner.useBrain = true;
+                            } else {
+                                newRunner.useBrain = false;
+                            }
+                            
+                            runners.push(newRunner);
+                            foodEatenCount = 0;
+                        }
+                    }
+                }
+            }
+
+            reactToChaser(c) {
+                let d = p5.Vector.dist(this.pos, c.pos);
+                if (d < this.dna.viewDist) {
+                    let currentMax = this.dna.maxSpeed;
+                    if (d < 100 && this.energy > 8) { 
+                        currentMax *= 2.0; 
+                        this.energy -= 0.12; 
+                        this.isDashing = true;
+                    } else {
+                        this.isDashing = false;
+                    }
+                    this.acc.add(p5.Vector.sub(this.pos, c.pos).setMag(currentMax).sub(this.vel).limit(0.7)); // 0.6 -> 0.7로 증가
+                    
+                    let inMud = (this.pos.x > mudZone.x && this.pos.x < mudZone.x + mudZone.w && 
+                                this.pos.y > mudZone.y && this.pos.y < mudZone.y + mudZone.h);
+                    let currentTime = millis();
+                    let barricadeCooldown = 2000; // 2초 쿨다운
+                    
+                    if (!inMud && d < 120 && random(1) < this.dna.barricadeProb && this.energy > 25 && 
+                        currentTime - this.lastBarricadeTime > barricadeCooldown) { // 쿨다운 체크 추가
+                        barricades.push({ 
+                            x: this.pos.x - 25, 
+                            y: this.pos.y - 25, 
+                            w: 50, 
+                            h: 50, 
+                            createdAt: millis() 
+                        });
+                        this.energy -= 20; 
+                        this.lastBarricadeTime = currentTime; // 쿨다운 시간 업데이트
+                    }
+                } else {
+                    this.isDashing = false;
+                }
+            }
+
+            hide(c, walls) {
+                if (this.boredom > 150) return;
+                for (let w of walls) {
+                    let center = createVector(w.x + w.w/2, w.y + w.h/2);
+                    let hPos = p5.Vector.add(center, p5.Vector.sub(center, c.pos).setMag(w.w/2 + 50));
+                    if (p5.Vector.dist(this.pos, hPos) < 120) {
+                        this.acc.add(p5.Vector.sub(hPos, this.pos).limit(0.4));
+                    }
+                }
+            }
+
+            avoid(walls) {
+                let sensor = p5.Vector.add(this.pos, this.vel.copy().setMag(40));
+                for (let w of walls) {
+                    if (sensor.x > w.x && sensor.x < w.x+w.w && 
+                        sensor.y > w.y && sensor.y < w.y+w.h) {
+                        this.acc.add(createVector(-this.vel.y, this.vel.x).setMag(this.dna.maxSpeed).sub(this.vel).limit(0.6));
+                    }
+                }
+            }
+
+            flock(others) {
+                let sep = createVector(0,0); 
+                let count = 0;
+                for (let o of others) {
+                    let d = p5.Vector.dist(this.pos, o.pos);
+                    if (d > 0 && d < 60) { // 50 -> 60으로 증가 (더 넓은 분리 거리)
+                        sep.add(p5.Vector.sub(this.pos, o.pos).normalize().div(d)); 
+                        count++; 
+                    }
+                }
+                if (count > 0) {
+                    this.acc.add(sep.setMag(this.dna.maxSpeed).limit(0.6)); // 0.4 -> 0.6으로 증가 (더 강한 분리)
+                }
+            }
+
+            update(walls) {
+                this.energy -= 0.04; // 0.05 -> 0.04로 감소 (에너지 소모 줄임)
+                this.boredom = this.vel.mag() < 1.0 ? this.boredom + 1 : max(0, this.boredom - 0.5);
+                
+                // 신경망 모드에서는 신경망이 움직임 제어
+                if (this.useBrain && controlMode === 'NEURAL') {
+                    this.thinkAndMove(chasers, foods, []);
+                }
+                
+                this.vel.add(this.acc);
+                let finalLimit = this.dna.maxSpeed + this.boostSpeed;
+                if (this.isDashing) finalLimit *= 2.0; // 1.8 -> 2.0으로 증가
+                
+                // 진흙탕 구역에서 속도 감소 (DNA 모드와 신경망 모드 동일)
+                let inMudZone = (this.pos.x > mudZone.x && this.pos.x < mudZone.x + mudZone.w && 
+                                this.pos.y > mudZone.y && this.pos.y < mudZone.y + mudZone.h);
+                if (inMudZone) {
+                    finalLimit *= 0.3; // 진흙탕에서 30%로 속도 감소
+                }
+                
+                this.vel.limit(finalLimit);
+                this.pos.add(this.vel);
+                this.acc.mult(0);
+                
+                // 거리 추적
+                this.distanceTraveled += p5.Vector.dist(this.pos, this.lastPos);
+                this.lastPos = this.pos.copy();
+                this.survivalTime++;
+                
+                // 신경망 모드에서 실시간 적합도 업데이트
+                if (this.useBrain && controlMode === 'NEURAL') {
+                    this.fitness = evolutionManager.calculateFitness(this);
+                }
+                
+                resolveCollision(this, walls);
+                
+                // 화면 경계 처리 - 모든 모드에서 동일한 랩어라운드 처리
+                if (this.pos.x < 0) this.pos.x = width;
+                if (this.pos.x > width) this.pos.x = 0;
+                if (this.pos.y < 0) this.pos.y = height;
+                if (this.pos.y > height) this.pos.y = 0;
+            }
+
+            display() {
+                push(); 
+                translate(this.pos.x, this.pos.y); 
+                rotate(this.vel.heading());
+                
+                let rColor;
+                if (this.useBrain && controlMode === 'NEURAL') {
+                    rColor = this.isDashing ? color(0, 255, 255) : color(0, 200, 255); // 신경망: 청록색
+                } else {
+                    rColor = this.isDashing ? color(255, 100, 0) : 
+                            (this.boredom > 150 ? color(100, 200, 255) : color(80, 255, 80)); // DNA: 기존 색상
+                }
+                
+                fill(rColor); 
+                noStroke();
+                triangle(-10, -7, -10, 7, 13, 0);
+                fill(255, 215, 0); 
+                rect(-12, 12, map(this.energy, 0, 150, 0, 24), 3);
+                
+                // 바리케이드 쿨다운 표시
+                let currentTime = millis();
+                let timeSinceLastBarricade = currentTime - this.lastBarricadeTime;
+                let barricadeCooldown = 2000;
+                if (timeSinceLastBarricade < barricadeCooldown) {
+                    let cooldownProgress = timeSinceLastBarricade / barricadeCooldown;
+                    fill(255, 100, 100, 150); // 반투명 빨간색
+                    rect(-12, 16, 24 * cooldownProgress, 2); // 쿨다운 바
+                }
+                
+                pop();
+            }
+        }
+
+        // === 신경망 지원 Chaser 클래스 ===
+        class Chaser {
+            constructor(x, y) {
+                this.pos = createVector(x, y);
+                this.vel = p5.Vector.random2D();
+                this.vel.setMag(random(1, 2)); // 초기 속도 설정
+                this.acc = createVector(0, 0);
+                this.radius = 15;
+                this.level = 1;
+                this.maxSpeed = 3.5; 
+                this.stuckFrames = 0;
+                this.fatigue = 0;
+                this.isBerserk = false;
+                
+                // 신경망 관련 속성
+                this.brain = null;
+                this.useBrain = false;
+                this.fitness = 0;
+                this.survivalTime = 0;
+                this.runnersTagged = 0;
+                this.distanceTraveled = 0;
+                this.lastPos = this.pos.copy();
+            }
+
+            initBrain(inputNodes, hiddenNodes, outputNodes) {
+                this.brain = new NeuralNetwork(inputNodes, hiddenNodes, outputNodes);
+                this.useBrain = true;
+            }
+
+            thinkAndChase(runners, walls) {
+                if (!this.brain || runners.length === 0) return;
+                
+                let inputs = this.getChaserSensoryInputs(runners, walls);
+                let outputs = this.brain.predict(inputs);
+                
+                // 신경망 출력을 가속도로 변환 
+                let currentMaxSpeed = this.isBerserk ? 6.5 : max(2.0, this.maxSpeed + (this.level * 0.03) - min(this.fatigue, 2.0));
+                
+                // 진흙탕 구역에서 속도 감소 
+                if (this.pos.x > mudZone.x && this.pos.x < mudZone.x + mudZone.w && 
+                    this.pos.y > mudZone.y && this.pos.y < mudZone.y + mudZone.h) {
+                    currentMaxSpeed *= 0.3; // 15% -> 30%로 변경 
+                }
+                
+                let xAccel = outputs[0] * currentMaxSpeed * 2.5; 
+                let yAccel = outputs[1] * currentMaxSpeed * 2.5;
+                
+                this.acc.add(createVector(xAccel, yAccel).limit(2.0)); 
+                
+                // 기본적인 추격 본능 추가 
+                this.basicChaseInstinct(runners);
+                
+                // 기본적인 벽 회피
+                this.avoidWallsBasic(walls);
+                
+                // 신경망 모드에서도 stuck 감지 및 탈출 로직 추가
+                this.handleStuckSituation(currentMaxSpeed);
+                
+                // 기본 움직임 보장 - 속도가 너무 낮으면 랜덤 움직임 추가
+                if (this.vel.mag() < 1.0) {
+                    let randomMove = p5.Vector.random2D();
+                    randomMove.setMag(currentMaxSpeed * 0.5);
+                    this.acc.add(randomMove);
+                }
+            }
+
+            handleStuckSituation(currentMaxSpeed) {
+                // 속도가 너무 느리면 stuck 상태로 판단
+                if (this.vel.mag() < 0.8) {
+                    this.stuckFrames++;
+                } else {
+                    this.stuckFrames = 0;
+                }
+                
+                // Stuck 상태에서 강제 탈출 - 더 빠르게 반응
+                if (this.stuckFrames > 20) { 
+                    // 벽과의 충돌 감지
+                    let nearWall = false;
+                    for (let obs of obstacles) {
+                        let centerX = obs.x + obs.w/2;
+                        let centerY = obs.y + obs.h/2;
+                        let distToWall = p5.Vector.dist(this.pos, createVector(centerX, centerY));
+                        if (distToWall < 120) { // 100 -> 120으로 증가 
+                            nearWall = true;
+                            // 벽에서 멀어지는 방향으로 강한 힘 적용
+                            let escapeDirection = p5.Vector.sub(this.pos, createVector(centerX, centerY));
+                            escapeDirection.setMag(currentMaxSpeed * 5); 
+                            this.acc.add(escapeDirection);
+                            break;
+                        }
+                    }
+                    
+                    // 벽 근처가 아니면 랜덤 방향으로 탈출
+                    if (!nearWall) {
+                        let escapeForce = p5.Vector.random2D();
+                        escapeForce.setMag(currentMaxSpeed * 4); // 3 -> 4로 증가
+                        this.acc.add(escapeForce);
+                    }
+                    
+                    // 너무 오래 stuck이면 위치 리셋 - 더 빠르게
+                    if (this.stuckFrames > 60) { // 90 -> 60으로 감소
+                        this.stuckFrames = 0;
+                        // 안전한 위치로 이동 (화면 중앙 근처)
+                        this.pos.x = width/2 + random(-150, 150); // 범위 확대
+                        this.pos.y = height/2 + random(-150, 150);
+                        // 속도도 리셋
+                        this.vel = p5.Vector.random2D();
+                        this.vel.setMag(this.maxSpeed * 1.5); // 더 빠른 속도로 시작
+                    }
+                }
+                
+                // 추가: 같은 위치에서 빙빙 도는 것을 방지
+                if (this.stuckFrames > 10) {
+                    // 현재 속도에 수직인 방향으로 힘 추가 (빙빙 도는 것 방지)
+                    let perpendicular = createVector(-this.vel.y, this.vel.x);
+                    perpendicular.setMag(currentMaxSpeed * 0.5);
+                    this.acc.add(perpendicular);
+                }
+            }
+
+            basicChaseInstinct(runners) {
+                if (runners.length === 0) return;
+                
+                // 가장 가까운 도망자를 향해 강한 힘 추가
+                let nearest = null;
+                let minDist = Infinity;
+                
+                for (let runner of runners) {
+                    let dist = p5.Vector.dist(this.pos, runner.pos);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = runner;
+                    }
+                }
+                
+                if (nearest && minDist < 400) { 
+                    let chaseForce = p5.Vector.sub(nearest.pos, this.pos);
+                    chaseForce.setMag(1.2); 
+                    this.acc.add(chaseForce);
+                }
+            }
+
+            avoidWallsBasic(walls) {
+                let sensor = p5.Vector.add(this.pos, this.vel.copy().setMag(60));
+                
+                // 화면 경계 회피 - 더 강한 힘으로
+                if (sensor.x < 60) this.acc.add(createVector(2.5, 0));
+                if (sensor.x > width - 60) this.acc.add(createVector(-2.5, 0));
+                if (sensor.y < 60) this.acc.add(createVector(0, 2.5));
+                if (sensor.y > height - 60) this.acc.add(createVector(0, -2.5));
+                
+                // 장애물 회피 - 더 넓은 감지 범위와 강한 힘
+                for (let wall of walls) {
+                    if (sensor.x > wall.x - 50 && sensor.x < wall.x + wall.w + 50 && 
+                        sensor.y > wall.y - 50 && sensor.y < wall.y + wall.h + 50) {
+                        let escape = p5.Vector.sub(this.pos, createVector(wall.x + wall.w/2, wall.y + wall.h/2));
+                        escape.setMag(1.8); // 1.0 -> 1.8로 증가
+                        this.acc.add(escape);
+                    }
+                }
+                
+                // 다른 술래들과의 분리 - DNA 모드 방식 적용
+                let sep = createVector(0, 0);
+                let count = 0;
+                for (let other of chasers) {
+                    if (other !== this) {
+                        let d = p5.Vector.dist(this.pos, other.pos);
+                        if (d > 0 && d < 150) { // 더 넓은 분리 거리
+                            sep.add(p5.Vector.sub(this.pos, other.pos).normalize().div(d)); 
+                            count++; 
+                        }
+                    }
+                }
+                if (count > 0) {
+                    this.acc.add(sep.setMag(this.maxSpeed * 2).limit(1.5)); // 매우 강한 분리
+                }
+                
+                // 빙빙 도는 것을 방지하기 위한 노이즈
+                if (frameCount % 20 === 0) {
+                    let noise = p5.Vector.random2D();
+                    noise.setMag(0.5);
+                    this.acc.add(noise);
+                }
+            }
+
+            getChaserSensoryInputs(runners, walls) {
+                let inputs = [];
+                
+                // 가장 가까운 도망자 정보
+                let nearestRunner = SensorySystem.findNearest(this, runners);
+                inputs.push(SensorySystem.normalizeDistance(nearestRunner.distance, 500)); // 거리
+                inputs.push(SensorySystem.normalizeAngle(nearestRunner.angle)); // 각도
+                
+                // 가장 먼 도망자 정보 (포위 전략용)
+                let farthestRunner = this.findFarthest(runners);
+                inputs.push(SensorySystem.normalizeDistance(farthestRunner.distance, 500)); // 거리
+                inputs.push(SensorySystem.normalizeAngle(farthestRunner.angle)); // 각도
+                
+                // 벽까지의 거리
+                inputs.push(SensorySystem.normalizeDistance(this.pos.x, width)); // 왼쪽 벽
+                inputs.push(SensorySystem.normalizeDistance(width - this.pos.x, width)); // 오른쪽 벽
+                inputs.push(SensorySystem.normalizeDistance(this.pos.y, height)); // 위쪽 벽
+                inputs.push(SensorySystem.normalizeDistance(height - this.pos.y, height)); // 아래쪽 벽
+                
+                // 자신의 상태
+                inputs.push(this.level / 20); // 레벨 (최대 20으로 정규화)
+                inputs.push(Math.min(this.fatigue / 2, 1)); // 피로도
+                inputs.push(this.isBerserk ? 1 : 0); // 광폭화 상태
+                
+                // 주변 장애물 정보
+                let nearObstacle = 0;
+                for (let wall of walls) {
+                    let center = createVector(wall.x + wall.w/2, wall.y + wall.h/2);
+                    let dist = p5.Vector.dist(this.pos, center);
+                    if (dist < 100) {
+                        nearObstacle = 1;
+                        break;
+                    }
+                }
+                inputs.push(nearObstacle);
+                
+                return inputs;
+            }
+
+            findFarthest(runners) {
+                if (runners.length === 0) {
+                    return { distance: 0, angle: 0 };
+                }
+                
+                let maxDist = -1;
+                let farthestRunner = null;
+                
+                for (let runner of runners) {
+                    let dist = p5.Vector.dist(this.pos, runner.pos);
+                    if (dist > maxDist) {
+                        maxDist = dist;
+                        farthestRunner = runner.pos;
+                    }
+                }
+                
+                let angle = Math.atan2(farthestRunner.y - this.pos.y, farthestRunner.x - this.pos.x);
+                return { distance: maxDist, angle: angle };
+            }
+
+            selectTarget(list) {
+                let minD = Infinity; 
+                let target = list[0];
+                for (let r of list) {
+                    let d = p5.Vector.dist(this.pos, r.pos);
+                    if (d < minD) { 
+                        minD = d; 
+                        target = r; 
+                    }
+                }
+                return target;
+            }
+
+            chase(t, walls) {
+                if(!t) return;
+                this.fatigue += 0.002; 
+                let speedPenalty = min(this.fatigue, 2.0); 
+                let currentMaxSpeed = this.isBerserk ? 6.5 : max(2.0, this.maxSpeed + (this.level * 0.03) - speedPenalty);
+                
+                if (this.pos.x > mudZone.x && this.pos.x < mudZone.x + mudZone.w && 
+                    this.pos.y > mudZone.y && this.pos.y < mudZone.y + mudZone.h) {
+                    currentMaxSpeed *= 0.3; // 15% -> 30%로 변경 
+                }
+                
+                let desired = p5.Vector.sub(t.pos, this.pos).setMag(currentMaxSpeed);
+                let sensorAngles = [0, QUARTER_PI, -QUARTER_PI];
+                let blocked = false;
+                let avoidForce = createVector(0, 0);
+                
+                for (let angle of sensorAngles) {
+                    let look = this.vel.copy().rotate(angle).setMag(60);
+                    let sensorPos = p5.Vector.add(this.pos, look);
+                    for (let w of walls) {
+                        if (sensorPos.x > w.x && sensorPos.x < w.x + w.w && 
+                            sensorPos.y > w.y && sensorPos.y < w.y + w.h) {
+                            blocked = true;
+                            let escape = look.copy().rotate(angle === 0 ? HALF_PI : -angle).setMag(currentMaxSpeed);
+                            avoidForce.add(escape);
+                        }
+                    }
+                }
+                
+                if (this.vel.mag() < 0.8) this.stuckFrames++;
+                else this.stuckFrames = 0;
+                
+                if (this.stuckFrames > 30) { 
+                    // 더 강한 탈출 힘 적용
+                    let escape = createVector(-this.vel.y, this.vel.x).setMag(currentMaxSpeed * 3); 
+                    this.acc.add(escape);
+                    
+                    // 추가: 랜덤 방향으로도 힘 추가
+                    let randomEscape = p5.Vector.random2D();
+                    randomEscape.setMag(currentMaxSpeed * 2);
+                    this.acc.add(randomEscape);
+                    
+                    if (this.stuckFrames > 50) { // 60 -> 50으로 감소
+                        this.stuckFrames = 0;
+                        // 위치 리셋
+                        this.pos.x = width/2 + random(-150, 150);
+                        this.pos.y = height/2 + random(-150, 150);
+                        this.vel = p5.Vector.random2D();
+                        this.vel.setMag(this.maxSpeed * 1.5);
+                    }
+                } else if (blocked) {
+                    this.acc.add(p5.Vector.sub(avoidForce, this.vel).limit(1.0));
+                } else {
+                    this.acc.add(p5.Vector.sub(desired, this.vel).limit(0.5));
+                }
+            }
+
+            update(walls) {
+                this.vel.add(this.acc);
+                this.vel.limit(this.isBerserk ? 7 : 6); // 9->7, 7->6으로 감소
+                this.pos.add(this.vel);
+                this.acc.mult(0);
+                
+                // 거리 추적
+                this.distanceTraveled += p5.Vector.dist(this.pos, this.lastPos);
+                this.lastPos = this.pos.copy();
+                this.survivalTime++;
+                
+                resolveCollision(this, walls, true);
+                
+                // 화면 경계 처리 - 모든 모드에서 동일한 랩어라운드 처리
+                if (this.pos.x < 0) this.pos.x = width;
+                if (this.pos.x > width) this.pos.x = 0;
+                if (this.pos.y < 0) this.pos.y = height;
+                if (this.pos.y > height) this.pos.y = 0;
+            }
+
+            display() {
+                if (this.isBerserk) {
+                    fill(255, 0, 255); 
+                    stroke(255); 
+                    strokeWeight(3);
+                } else if (this.useBrain && controlMode === 'NEURAL') {
+                    fill(255, 100, 100); // 신경망 술래: 밝은 빨간색
+                    stroke(255); 
+                    strokeWeight(2);
+                } else {
+                    fill(255, 50, 50); // 기존 술래: 어두운 빨간색
+                    stroke(255); 
+                    strokeWeight(2);
+                }
+                ellipse(this.pos.x, this.pos.y, this.radius * 2, this.radius * 2);
+                
+                fill(255); 
+                noStroke(); 
+                textAlign(CENTER); 
+                text("Lv." + this.level, this.pos.x, this.pos.y - 20);
+                
+                let fColor = this.isBerserk ? 255 : map(min(this.fatigue, 1.5), 0, 1.5, 255, 100);
+                stroke(this.isBerserk ? color(255,0,255) : color(fColor, 50, 50));
+                line(this.pos.x, this.pos.y, this.pos.x + this.vel.x*5, this.pos.y + this.vel.y*5);
+            }
+        }
+
+        // === 수정된 draw 함수 ===
+        function draw() {
+            background(25);
+            updateUI();
             
-            // 추가: 진흙탕 내부에는 바리케이드 설치 금지
-            let inMud = (this.pos.x > mudZone.x && this.pos.x < mudZone.x + mudZone.w && 
-                         this.pos.y > mudZone.y && this.pos.y < mudZone.y + mudZone.h);
-            if (!inMud && d < 110 && random(1) < this.dna.barricadeProb && this.energy > 30) {
-                barricades.push({ x: this.pos.x - 20, y: this.pos.y - 20, w: 40, h: 40, createdAt: millis() });
-                this.energy -= 25;
+            // 게임 종료 조건 체크
+            if (gameState === 'playing' && checkGameEnd()) {
+                return; // 게임이 종료되면 더 이상 업데이트하지 않음
             }
-        } else {
-            this.isDashing = false;
-        }
-    }
-
-    hide(c, walls) {
-        if (this.boredom > 150) return;
-        for (let w of walls) {
-            let center = createVector(w.x + w.w/2, w.y + w.h/2);
-            let hPos = p5.Vector.add(center, p5.Vector.sub(center, c.pos).setMag(w.w/2 + 50));
-            if (p5.Vector.dist(this.pos, hPos) < 120) this.acc.add(p5.Vector.sub(hPos, this.pos).limit(0.4));
-        }
-    }
-
-    avoid(walls) {
-        let sensor = p5.Vector.add(this.pos, this.vel.copy().setMag(40));
-        for (let w of walls) {
-            if (sensor.x > w.x && sensor.x < w.x+w.w && sensor.y > w.y && sensor.y < w.y+w.h) {
-                this.acc.add(createVector(-this.vel.y, this.vel.x).setMag(this.dna.maxSpeed).sub(this.vel).limit(0.6));
+            
+            if (frameCount % 60 === 0 && foods.length < 40) spawnFood();
+            
+            // 모든 에이전트가 죽었을 때 자동 재시작 (안전장치)
+            if (runners.length === 0 && chasers.length === 0) {
+                console.log('모든 에이전트가 죽음 - 게임 재시작');
+                generation++;
+                initGame();
+                return;
+            }
+            
+            let allWalls = [...obstacles, ...barricades];
+            
+            // 세이프존 그리기
+            fill(50, 40, 30, 150); 
+            rect(mudZone.x, mudZone.y, mudZone.w, mudZone.h, 30);
+            fill(100, 80, 60, 100); 
+            textAlign(CENTER); 
+            textSize(12); 
+            text("MUD ZONE (SLOW)", mudZone.x + mudZone.w/2, mudZone.y + mudZone.h/2);
+            
+            let currentTime = millis();
+            barricades = barricades.filter(bar => currentTime - bar.createdAt < 4000);
+            
+            if (chasers.length < 4 && frameCount % 180 === 0) {
+                let spawned = new Chaser(random(width), random(height));
+                spawned.level = 10;
+                if (controlMode === 'NEURAL') {
+                    spawned.initBrain(12, 16, 2);
+                    spawned.useBrain = true;
+                }
+                chasers.push(spawned);
+            }
+            
+            // 장애물과 바리케이드 그리기
+            fill(55); 
+            noStroke();
+            for (let obs of obstacles) rect(obs.x, obs.y, obs.w, obs.h);
+            fill(139, 69, 19); 
+            stroke(100, 50, 10);
+            for (let bar of barricades) rect(bar.x, bar.y, bar.w, bar.h);
+            
+            // 음식 그리기
+            fill(255, 215, 0); 
+            noStroke();
+            for (let f of foods) ellipse(f.x, f.y, 7, 7);
+            
+            // 추격자 업데이트
+            if (runners.length > 0 && chasers.length > 0) {
+                for (let c of chasers) {
+                    c.isBerserk = (chasers.length === 1);
+                    
+                    if (c.useBrain && controlMode === 'NEURAL') {
+                        // 신경망 모드: 신경망이 직접 제어
+                        c.thinkAndChase(runners, allWalls);
+                        
+                        // 추가 분리 로직 - 술래들이 너무 뭉치지 않도록
+                        for (let other of chasers) {
+                            if (other !== c) {
+                                let d = p5.Vector.dist(c.pos, other.pos);
+                                if (d < 50 && d > 0) { // 매우 가까이 있을 때
+                                    let pushAway = p5.Vector.sub(c.pos, other.pos);
+                                    pushAway.setMag(4.0); // 매우 강한 밀어내기 힘
+                                    c.acc.add(pushAway);
+                                }
+                            }
+                        }
+                    } else {
+                        // DNA 모드
+                        let target = c.selectTarget(runners);
+                        let avoidWalls = c.isBerserk ? obstacles : allWalls;
+                        c.chase(target, avoidWalls);
+                    }
+                    
+                    c.update(allWalls);
+                    c.display();
+                }
+            } else if (runners.length === 0 && gameState === 'playing') {
+                // 모든 러너가 죽었을 때 - 게임 종료 처리는 checkGameEnd에서 수행
+                console.log('모든 러너가 죽음');
+            } else if (chasers.length === 0 && gameState === 'playing') {
+                // 모든 술래가 죽었을 때 - 게임 종료 처리는 checkGameEnd에서 수행
+                console.log('모든 술래가 죽음');
+            }
+            
+            // 러너 업데이트 - DNA와 신경망 모드 모두 동일한 기본 행동 실행
+            for (let i = runners.length - 1; i >= 0; i--) {
+                let r = runners[i];
+                
+                // 모든 모드에서 동일한 기본 행동 실행
+                r.flock(runners);
+                r.searchFood(foods);
+                
+                let neighbors = 0;
+                for(let other of runners) {
+                    if(p5.Vector.dist(r.pos, other.pos) < 120) neighbors++;
+                }
+                r.boostSpeed = map(neighbors, 1, 10, 0, 2.5);
+                
+                for(let c of chasers) {
+                    r.reactToChaser(c);
+                    r.hide(c, allWalls);
+                }
+                r.avoid(allWalls);
+                
+                // 신경망 모드에서는 추가로 분리 로직 적용 (클러스터링 방지)
+                if (r.useBrain && controlMode === 'NEURAL') {
+                    // 추가 분리 로직 - 너무 가까이 있으면 강제로 밀어내기
+                    for (let other of runners) {
+                        if (other !== r) {
+                            let d = p5.Vector.dist(r.pos, other.pos);
+                            if (d < 30 && d > 0) { // 매우 가까이 있을 때
+                                let pushAway = p5.Vector.sub(r.pos, other.pos);
+                                pushAway.setMag(3.0); // 강한 밀어내기 힘
+                                r.acc.add(pushAway);
+                            }
+                        }
+                    }
+                }
+                
+                r.update(allWalls);
+                r.display();
+                
+                // 충돌 검사
+                for (let j = chasers.length - 1; j >= 0; j--) {
+                    let c = chasers[j];
+                    let d = p5.Vector.dist(c.pos, r.pos);
+                    let neighbors = 0;
+                    for(let other of runners) {
+                        if(p5.Vector.dist(r.pos, other.pos) < 120) neighbors++;
+                    }
+                    
+                    if (neighbors >= 3 && d < 90) { // 80 -> 90으로 증가 
+                        chasers.splice(j, 1);
+                    } else if (d < 20) { // 22 -> 20으로 감소 
+                        deathLocations.push(r.pos.copy());
+                        c.level++;
+                        c.fatigue = 0;
+                        r.score = frameCount;
+                        deadRunners.push(r);
+                        runners.splice(i, 1);
+                        break; 
+                    }
+                }
+                
+                if (runners[i] && r.energy <= 0) {
+                    deadRunners.push(r);
+                    runners.splice(i, 1);
+                }
+            }
+            
+            // 마우스 클릭으로 러너 선택 
+            if (mouseIsPressed && showVisualization) {
+                for (let runner of runners) {
+                    if (p5.Vector.dist(createVector(mouseX, mouseY), runner.pos) < 20) {
+                        selectedRunner = runner;
+                        break;
+                    }
+                }
             }
         }
-    }
 
-    flock(others) {
-        let sep = createVector(0,0); let count = 0;
-        for (let o of others) {
-            let d = p5.Vector.dist(this.pos, o.pos);
-            if (d > 0 && d < 50) { sep.add(p5.Vector.sub(this.pos, o.pos).normalize().div(d)); count++; }
+        // === UI 업데이트 함수 수정 ===
+        function updateUI() {
+            document.getElementById('gen').innerText = generation;
+            document.getElementById('alive').innerText = runners.length;
+            document.getElementById('cCount').innerText = chasers.length;
+            
+            // 모드 표시
+            let modeEl = document.getElementById('mode');
+            modeEl.innerText = controlMode === 'NEURAL' ? '신경망' : 'DNA';
+            modeEl.className = controlMode === 'NEURAL' ? 'neural-mode' : 'dna-mode';
+            
+            // 신경망 통계 표시
+            let neuralStats = document.getElementById('neuralStats');
+            if (controlMode === 'NEURAL') {
+                neuralStats.style.display = 'block';
+                
+                // 실시간 적합도 계산 및 표시
+                if (runners.length > 0) {
+                    // 현재 살아있는 러너들의 적합도 계산
+                    let currentFitnesses = runners.map(r => evolutionManager.calculateFitness(r));
+                    let currentBest = Math.max(...currentFitnesses);
+                    let currentAvg = currentFitnesses.reduce((sum, f) => sum + f, 0) / currentFitnesses.length;
+                    
+                    // 죽은 러너들의 적합도도 포함
+                    if (deadRunners.length > 0) {
+                        let deadFitnesses = deadRunners.map(r => r.fitness || evolutionManager.calculateFitness(r));
+                        let allFitnesses = [...currentFitnesses, ...deadFitnesses];
+                        currentBest = Math.max(currentBest, Math.max(...deadFitnesses));
+                        currentAvg = allFitnesses.reduce((sum, f) => sum + f, 0) / allFitnesses.length;
+                    }
+                    
+                    document.getElementById('bestFitness').innerText = currentBest.toFixed(1);
+                    document.getElementById('avgFitness').innerText = currentAvg.toFixed(1);
+                } else {
+                    // 진화 매니저 값 사용
+                    document.getElementById('bestFitness').innerText = evolutionManager.bestFitness.toFixed(1);
+                    document.getElementById('avgFitness').innerText = evolutionManager.avgFitness.toFixed(1);
+                }
+            } else {
+                neuralStats.style.display = 'none';
+            }
+            
+            let lvStr = chasers.map((c, i) => `술래${i+1}: Lv.${c.level}`).join(' | ');
+            document.getElementById('chaserLevels').innerText = lvStr;
+            
+            let isStuck = chasers.some(c => c.stuckFrames > 30);
+            let anyBerserk = chasers.some(c => c.isBerserk);
+            let stateEl = document.getElementById('cState');
+            
+            if (anyBerserk) {
+                stateEl.innerText = "광폭화 모드!!!";
+                stateEl.className = "berserk";
+            } else if (isStuck) {
+                stateEl.innerText = "경로 재탐색 중!";
+                stateEl.className = "alert";
+            } else {
+                stateEl.innerText = "추격 중";
+                stateEl.className = "";
+            }
         }
-        if (count > 0) this.acc.add(sep.setMag(this.dna.maxSpeed).limit(0.4));
-    }
 
-    update(walls) {
-        this.energy -= 0.05;
-        this.boredom = this.vel.mag() < 1.0 ? this.boredom + 1 : max(0, this.boredom - 0.5);
-        this.vel.add(this.acc);
-        let finalLimit = this.dna.maxSpeed + this.boostSpeed;
-        if (this.isDashing) finalLimit *= 1.8;
-        this.vel.limit(finalLimit);
-        this.pos.add(this.vel);
-        this.acc.mult(0);
-        resolveCollision(this, walls);
-        this.pos.x = (this.pos.x + width) % width;
-        this.pos.y = (this.pos.y + height) % height;
-    }
+        // === 기존 함수들 유지 ===
+        function resolveCollision(agent, walls, isChaser = false) {
+            for (let i = walls.length - 1; i >= 0; i--) {
+                let w = walls[i];
+                let cx = constrain(agent.pos.x, w.x, w.x + w.w);
+                let cy = constrain(agent.pos.y, w.y, w.y + w.h);
+                let d = dist(agent.pos.x, agent.pos.y, cx, cy);
+                if (d < agent.radius) {
+                    if (isChaser && agent.isBerserk && walls[i].createdAt) {
+                        barricades.splice(barricades.indexOf(walls[i]), 1);
+                        continue; 
+                    }
+                    let overlap = agent.radius - d;
+                    let push = createVector(agent.pos.x - cx, agent.pos.y - cy);
+                    if (push.mag() === 0) push = p5.Vector.random2D();
+                    push.setMag(overlap);
+                    agent.pos.add(push);
+                    let normal = push.copy().normalize();
+                    let dot = agent.vel.dot(normal);
+                    if (dot < 0) {
+                        let vNormal = p5.Vector.mult(normal, dot);
+                        agent.vel.sub(vNormal);
+                    }
+                }
+            }
+        }
 
-    display() {
-        push(); translate(this.pos.x, this.pos.y); rotate(this.vel.heading());
-        let rColor = this.isDashing ? color(255, 100, 0) : (this.boredom > 150 ? color(100, 200, 255) : color(80, 255, 80));
-        fill(rColor); noStroke();
-        triangle(-10, -7, -10, 7, 13, 0);
-        fill(255, 215, 0); rect(-12, 12, map(this.energy, 0, 150, 0, 24), 3);
-        pop();
-    }
-}
-</script>
+        // === 새로운 제어 함수들 ===
+        function setControlMode(mode) {
+            controlMode = mode;
+            
+            // 버튼 상태 업데이트
+            document.getElementById('dnaBtn').classList.toggle('active', mode === 'DNA');
+            document.getElementById('neuralBtn').classList.toggle('active', mode === 'NEURAL');
+            
+            // 러너들의 제어 모드 변경
+            for (let runner of runners) {
+                if (mode === 'NEURAL') {
+                    if (!runner.brain) {
+                        runner.initBrain(10, 12, 2);
+                    }
+                    runner.useBrain = true;
+                } else {
+                    runner.useBrain = false;
+                }
+            }
+            
+            // 죽은 러너들의 제어 모드도 변경 
+            for (let deadRunner of deadRunners) {
+                if (mode === 'NEURAL') {
+                    if (!deadRunner.brain) {
+                        deadRunner.initBrain(10, 12, 2);
+                    }
+                    deadRunner.useBrain = true;
+                } else {
+                    deadRunner.useBrain = false;
+                }
+            }
+            
+            // 추격자들의 제어 모드 변경
+            for (let chaser of chasers) {
+                if (mode === 'NEURAL') {
+                    if (!chaser.brain) {
+                        chaser.initBrain(12, 16, 2);
+                    }
+                    chaser.useBrain = true;
+                } else {
+                    chaser.useBrain = false;
+                }
+            }
+            
+            // 시각화 체크박스 상태 업데이트
+            let visualizationCheckbox = document.getElementById('showVisualization');
+            if (visualizationCheckbox) {
+                showVisualization = visualizationCheckbox.checked;
+            }
+        }
+
+        function savePopulation() {
+            if (controlMode !== 'NEURAL') {
+                alert('신경망 모드에서만 저장할 수 있습니다.');
+                return;
+            }
+            
+            let data = {
+                version: "1.0",
+                generation: generation,
+                populationSize: runnerCount,
+                runners: runners.map(r => ({
+                    brain: r.brain ? r.brain.toJSON() : null,
+                    fitness: r.fitness,
+                    survivalTime: r.survivalTime,
+                    foodCollected: r.foodCollected,
+                    distanceTraveled: r.distanceTraveled
+                })),
+                statistics: {
+                    bestFitness: evolutionManager.bestFitness,
+                    avgFitness: evolutionManager.avgFitness
+                }
+            };
+            
+            localStorage.setItem('neuralNetworkTagGame', JSON.stringify(data));
+            alert('인구가 저장되었습니다!');
+        }
+
+        function loadPopulation() {
+            if (controlMode !== 'NEURAL') {
+                alert('신경망 모드에서만 불러올 수 있습니다.');
+                return;
+            }
+            
+            let savedData = localStorage.getItem('neuralNetworkTagGame');
+            if (!savedData) {
+                alert('저장된 데이터가 없습니다.');
+                return;
+            }
+            
+            try {
+                let data = JSON.parse(savedData);
+                generation = data.generation;
+                evolutionManager.generation = data.generation;
+                evolutionManager.bestFitness = data.statistics.bestFitness;
+                evolutionManager.avgFitness = data.statistics.avgFitness;
+                
+                runners = [];
+                for (let runnerData of data.runners) {
+                    let runner = new Runner(random(width), random(height));
+                    if (runnerData.brain) {
+                        runner.brain = NeuralNetwork.fromJSON(runnerData.brain);
+                        runner.useBrain = true;
+                        runner.fitness = runnerData.fitness;
+                        runner.survivalTime = runnerData.survivalTime;
+                        runner.foodCollected = runnerData.foodCollected;
+                        runner.distanceTraveled = runnerData.distanceTraveled;
+                    }
+                    runners.push(runner);
+                }
+                
+                alert('인구가 불러와졌습니다!');
+            } catch (e) {
+                alert('데이터 불러오기에 실패했습니다: ' + e.message);
+            }
+        }
+
+        // === 게임 재시작 함수 ===
+        function restartGame() {
+            // 게임 상태 초기화
+            gameState = 'playing';
+            gameStartTime = millis();
+            generation = 1;
+            
+            // 진화 관리자 초기화
+            evolutionManager = new EvolutionManager();
+            evolutionManager.bestFitness = 0;
+            evolutionManager.avgFitness = 0;
+            
+            // 모든 에이전트 초기화
+            runners = [];
+            chasers = [];
+            deadRunners = [];
+            deathLocations = [];
+            barricades = [];
+            foods = [];
+            foodEatenCount = 0;
+            
+            // 게임 결과 숨기기
+            document.getElementById('gameResult').style.display = 'none';
+            
+            // 게임 초기화
+            initGame();
+            
+            console.log('게임이 재시작되었습니다.');
+        }
+
+        // === 승리 조건 체크 및 게임 종료 처리 ===
+        function checkGameEnd() {
+            let currentTime = millis();
+            let gameTime = currentTime - gameStartTime;
+            
+            // 시간 초과 (2분)
+            if (gameTime > maxGameTime) {
+                endGame('runners_win', '시간 초과! 도망자 승리!');
+                return true;
+            }
+            
+            // 모든 도망자가 죽음
+            if (runners.length === 0 && deadRunners.length > 0) {
+                endGame('chasers_win', '모든 도망자 제거! 술래 승리!');
+                return true;
+            }
+            
+            // 모든 술래가 죽음
+            if (chasers.length === 0) {
+                endGame('runners_win', '모든 술래 제거! 도망자 승리!');
+                return true;
+            }
+            
+            return false;
+        }
+
+        function endGame(winner, message) {
+            gameState = winner;
+            let gameTime = millis() - gameStartTime;
+            
+            // 게임 결과 표시
+            document.getElementById('winnerText').innerText = message;
+            document.getElementById('gameTime').innerText = `게임 시간: ${(gameTime/1000).toFixed(1)}초`;
+            document.getElementById('gameResult').style.display = 'block';
+            
+            console.log(`게임 종료: ${message} (${(gameTime/1000).toFixed(1)}초)`);
+            
+            // 3초 후 자동으로 다음 세대 시작
+            setTimeout(() => {
+                if (controlMode === 'NEURAL') {
+                    // 신경망 모드에서는 진화 수행
+                    if (deadRunners.length > 0) {
+                        evolutionManager.evolve();
+                    }
+                }
+                generation++;
+                initGame();
+            }, 3000);
+        }
+
+        // === 이벤트 리스너 ===
+        document.getElementById('showVisualization').addEventListener('change', function() {
+            showVisualization = this.checked;
+        });
+    </script>
 </body>
 </html>
